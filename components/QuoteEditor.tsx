@@ -7,6 +7,8 @@ import {
   Trash2,
   Calculator,
   FileDown,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { generateId, formatCurrency } from "@/lib/utils";
 import type { Quote, QuoteItem, CostItem, ClientInfo } from "@/lib/types";
@@ -55,6 +57,16 @@ export function QuoteEditor({
       "1. 본 견적서는 발행일로부터 14일간 유효합니다.\n2. 부가세(VAT) 별도 금액입니다.",
   );
   const [showMargin, setShowMargin] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const recalcFromCostItems = (item: QuoteItem): QuoteItem => {
     if (item.costItems.length === 0) return item;
@@ -215,11 +227,11 @@ export function QuoteEditor({
 
         const costRows = item.costItems
           .map(
-            (c, ci) =>
+            (c) =>
               `<tr style="color:#555">
                 <td style="padding:4px 8px;border:1px solid #ddd;text-align:center"></td>
                 <td style="padding:4px 8px;border:1px solid #ddd"></td>
-                <td style="padding:4px 8px;border:1px solid #ddd;padding-left:24px">└ ${c.description}</td>
+                <td style="padding:4px 8px;border:1px solid #ddd;padding-left:24px">\u2514 ${c.description}</td>
                 <td style="padding:4px 8px;border:1px solid #ddd;text-align:center">${c.quantity}</td>
                 <td style="padding:4px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(c.unitPrice)} <span style="color:#999;font-size:11px">(원가)</span></td>
                 <td style="padding:4px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(c.laborCost)}</td>
@@ -237,6 +249,7 @@ export function QuoteEditor({
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>원가/마진 내역서 - ${client.name || "미입력"}</title>
   <style>
     @page { size: A4; margin: 10mm; }
@@ -303,58 +316,59 @@ export function QuoteEditor({
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto pb-32">
-      <header className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+    <div className="p-4 md:p-10 max-w-6xl mx-auto pb-28 md:pb-32">
+      {/* Header */}
+      <header className="flex items-center justify-between mb-6 md:mb-8">
+        <div className="flex items-center gap-2 md:gap-4">
           <button
             onClick={onCancel}
             className="p-2 hover:bg-neutral-200 rounded-full transition-colors"
           >
             <ChevronLeft size={24} />
           </button>
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-xl md:text-2xl font-bold">
             {initialQuote ? "견적서 수정" : "새 견적서 작성"}
           </h2>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <button
             onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl font-medium text-neutral-600 hover:bg-neutral-200 transition-colors"
+            className="hidden md:block px-5 py-2.5 rounded-xl font-medium text-neutral-600 hover:bg-neutral-200 transition-colors"
           >
             취소
           </button>
           <button
             onClick={handleSave}
-            className="bg-neutral-900 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-neutral-800 transition-colors shadow-sm"
+            className="bg-neutral-900 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-xl font-medium hover:bg-neutral-800 transition-colors shadow-sm text-sm md:text-base"
           >
             저장하기
           </button>
         </div>
       </header>
 
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         {/* Basic Info */}
-        <section className="bg-white p-6 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+        <section className="bg-white p-4 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
+          <h3 className="text-base md:text-lg font-semibold mb-4 md:mb-6 flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-sm">
               1
             </span>
             기본 정보
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 견적일자
               </label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all"
+                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 고객명 / 상호명 *
               </label>
               <input
@@ -362,11 +376,11 @@ export function QuoteEditor({
                 value={client.name}
                 onChange={(e) => setClient({ ...client, name: e.target.value })}
                 placeholder="홍길동 또는 (주)회사명"
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all"
+                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 연락처
               </label>
               <input
@@ -376,11 +390,11 @@ export function QuoteEditor({
                   setClient({ ...client, contact: e.target.value })
                 }
                 placeholder="010-0000-0000"
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all"
+                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 공사 예정일
               </label>
               <input
@@ -390,11 +404,11 @@ export function QuoteEditor({
                   setClient({ ...client, projectDate: e.target.value })
                 }
                 placeholder="2026년 4월 중순"
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all"
+                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 현장 주소
               </label>
               <input
@@ -404,44 +418,45 @@ export function QuoteEditor({
                   setClient({ ...client, address: e.target.value })
                 }
                 placeholder="서울시 강남구 테헤란로..."
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all"
+                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
               />
             </div>
           </div>
         </section>
 
         {/* Items */}
-        <section className="bg-white p-6 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
+        <section className="bg-white p-4 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
+            <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-sm">
                 2
               </span>
               상세 내역
             </h3>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowMargin(!showMargin)}
-                className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 ${
+                className={`text-xs md:text-sm font-medium px-3 md:px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 ${
                   showMargin
                     ? "bg-blue-100 text-blue-700"
                     : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
                 }`}
               >
-                <Calculator size={16} />
+                <Calculator size={14} />
                 {showMargin ? "원가/마진 숨기기" : "원가/마진 입력하기"}
               </button>
               <button
                 onClick={handlePrintMargin}
-                className="text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                className="text-xs md:text-sm font-medium px-3 md:px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
               >
-                <FileDown size={16} />
-                원가/마진 PDF
+                <FileDown size={14} />
+                <span className="hidden sm:inline">원가/마진</span> PDF
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-neutral-200 text-sm text-neutral-500">
@@ -449,13 +464,9 @@ export function QuoteEditor({
                   <th className="pb-3 font-medium w-[25%]">내용</th>
                   <th className="pb-3 font-medium w-[8%] text-center">수량</th>
                   <th className="pb-3 font-medium w-[15%] text-right">단가</th>
-                  <th className="pb-3 font-medium w-[15%] text-right">
-                    시공비
-                  </th>
+                  <th className="pb-3 font-medium w-[15%] text-right">시공비</th>
                   {showMargin && (
-                    <th className="pb-3 font-medium w-[10%] text-right text-blue-600">
-                      마진
-                    </th>
+                    <th className="pb-3 font-medium w-[10%] text-right text-blue-600">마진</th>
                   )}
                   <th className="pb-3 font-medium w-[12%] text-right">금액</th>
                   <th className="pb-3 font-medium w-[5%]"></th>
@@ -468,19 +479,11 @@ export function QuoteEditor({
                       <td className="py-3 pr-2 align-top">
                         <select
                           value={item.category}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "category",
-                              e.target.value,
-                            )
-                          }
+                          onChange={(e) => handleItemChange(item.id, "category", e.target.value)}
                           className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900"
                         >
                           {CATEGORIES.map((cat) => (
-                            <option key={cat} value={cat}>
-                              {cat}
-                            </option>
+                            <option key={cat} value={cat}>{cat}</option>
                           ))}
                         </select>
                       </td>
@@ -488,13 +491,7 @@ export function QuoteEditor({
                         <input
                           type="text"
                           value={item.description}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "description",
-                              e.target.value,
-                            )
-                          }
+                          onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
                           placeholder="상세 내용을 입력하세요"
                           className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900"
                         />
@@ -504,13 +501,7 @@ export function QuoteEditor({
                           type="number"
                           min="0"
                           value={item.quantity || ""}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "quantity",
-                              Number(e.target.value),
-                            )
-                          }
+                          onChange={(e) => handleItemChange(item.id, "quantity", Number(e.target.value))}
                           className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-center"
                         />
                       </td>
@@ -521,16 +512,8 @@ export function QuoteEditor({
                           </div>
                         ) : (
                           <input
-                            type="number"
-                            min="0"
-                            value={item.unitPrice || ""}
-                            onChange={(e) =>
-                              handleItemChange(
-                                item.id,
-                                "unitPrice",
-                                Number(e.target.value),
-                              )
-                            }
+                            type="number" min="0" value={item.unitPrice || ""}
+                            onChange={(e) => handleItemChange(item.id, "unitPrice", Number(e.target.value))}
                             className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-right"
                             placeholder="청구 단가"
                           />
@@ -543,16 +526,8 @@ export function QuoteEditor({
                           </div>
                         ) : (
                           <input
-                            type="number"
-                            min="0"
-                            value={item.laborCost || ""}
-                            onChange={(e) =>
-                              handleItemChange(
-                                item.id,
-                                "laborCost",
-                                Number(e.target.value),
-                              )
-                            }
+                            type="number" min="0" value={item.laborCost || ""}
+                            onChange={(e) => handleItemChange(item.id, "laborCost", Number(e.target.value))}
                             className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-right"
                             placeholder="청구 시공비"
                           />
@@ -578,142 +553,73 @@ export function QuoteEditor({
                     </tr>
                     {showMargin && (
                       <tr>
-                        <td
-                          colSpan={8}
-                          className="p-0 border-b border-neutral-100 pb-4"
-                        >
+                        <td colSpan={8} className="p-0 border-b border-neutral-100 pb-4">
                           <div className="bg-blue-50/30 p-4 pl-12 border-l-2 border-blue-400 ml-2 rounded-r-lg">
-                            <div>
-                              <div className="flex items-center justify-between mb-3">
-                                <h5 className="text-sm font-semibold text-blue-800 flex items-center gap-1.5">
-                                  <Calculator size={14} />
-                                  자재/기타 원가 및 마진 (단가 산정)
-                                </h5>
-                                <button
-                                  onClick={() => addCostItem(item.id)}
-                                  className="text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-1"
-                                >
-                                  <Plus size={12} />
-                                  원가 추가
-                                </button>
-                              </div>
-
-                              {item.costItems.length > 0 ? (
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2 text-xs text-blue-500 font-medium px-1">
-                                    <span className="w-4"></span>
-                                    <span className="flex-1">내용</span>
-                                    <span className="w-16 text-center">수량</span>
-                                    <span className="w-24 text-right">원가</span>
-                                    <span className="w-24 text-right">마진</span>
-                                    <span className="w-24 text-right">시공비</span>
-                                    <span className="w-24 text-right">합계</span>
-                                    <span className="w-8"></span>
-                                  </div>
-                                  {item.costItems.map((cItem, cIndex) => (
-                                    <div
-                                      key={cItem.id}
-                                      className="flex items-center gap-2"
-                                    >
-                                      <span className="text-xs text-blue-400 w-4 text-center">
-                                        {cIndex + 1}
-                                      </span>
-                                      <input
-                                        type="text"
-                                        value={cItem.description}
-                                        onChange={(e) =>
-                                          handleCostItemChange(
-                                            item.id,
-                                            cItem.id,
-                                            "description",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="원가 내용 (예: 석고보드)"
-                                        className="flex-1 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                      />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={cItem.quantity || ""}
-                                        onChange={(e) =>
-                                          handleCostItemChange(
-                                            item.id,
-                                            cItem.id,
-                                            "quantity",
-                                            Number(e.target.value),
-                                          )
-                                        }
-                                        placeholder="수량"
-                                        className="w-16 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-center"
-                                      />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={cItem.unitPrice || ""}
-                                        onChange={(e) =>
-                                          handleCostItemChange(
-                                            item.id,
-                                            cItem.id,
-                                            "unitPrice",
-                                            Number(e.target.value),
-                                          )
-                                        }
-                                        placeholder="단가"
-                                        className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
-                                      />
-                                      <input
-                                        type="number"
-                                        value={cItem.margin || ""}
-                                        onChange={(e) =>
-                                          handleCostItemChange(
-                                            item.id,
-                                            cItem.id,
-                                            "margin",
-                                            Number(e.target.value),
-                                          )
-                                        }
-                                        placeholder="마진"
-                                        className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
-                                      />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={cItem.laborCost || ""}
-                                        onChange={(e) =>
-                                          handleCostItemChange(
-                                            item.id,
-                                            cItem.id,
-                                            "laborCost",
-                                            Number(e.target.value),
-                                          )
-                                        }
-                                        placeholder="시공비"
-                                        className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
-                                      />
-                                      <div className="w-24 text-right text-sm font-medium text-blue-900 px-2">
-                                        {new Intl.NumberFormat("ko-KR").format(
-                                          cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0),
-                                        )}
-                                        원
-                                      </div>
-                                      <button
-                                        onClick={() =>
-                                          removeCostItem(item.id, cItem.id)
-                                        }
-                                        className="p-1.5 text-blue-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="text-sm text-blue-500 py-3 text-center bg-white/50 rounded-md border border-blue-100 border-dashed mb-2">
-                                  등록된 원가 내역이 없습니다.
-                                </div>
-                              )}
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="text-sm font-semibold text-blue-800 flex items-center gap-1.5">
+                                <Calculator size={14} />
+                                자재/기타 원가 및 마진 (단가 산정)
+                              </h5>
+                              <button
+                                onClick={() => addCostItem(item.id)}
+                                className="text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-1"
+                              >
+                                <Plus size={12} />
+                                원가 추가
+                              </button>
                             </div>
+                            {item.costItems.length > 0 ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-xs text-blue-500 font-medium px-1">
+                                  <span className="w-4"></span>
+                                  <span className="flex-1">내용</span>
+                                  <span className="w-16 text-center">수량</span>
+                                  <span className="w-24 text-right">원가</span>
+                                  <span className="w-24 text-right">마진</span>
+                                  <span className="w-24 text-right">시공비</span>
+                                  <span className="w-24 text-right">합계</span>
+                                  <span className="w-8"></span>
+                                </div>
+                                {item.costItems.map((cItem, cIndex) => (
+                                  <div key={cItem.id} className="flex items-center gap-2">
+                                    <span className="text-xs text-blue-400 w-4 text-center">{cIndex + 1}</span>
+                                    <input type="text" value={cItem.description}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "description", e.target.value)}
+                                      placeholder="원가 내용"
+                                      className="flex-1 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                    />
+                                    <input type="number" min="0" value={cItem.quantity || ""}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "quantity", Number(e.target.value))}
+                                      className="w-16 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-center"
+                                    />
+                                    <input type="number" min="0" value={cItem.unitPrice || ""}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "unitPrice", Number(e.target.value))}
+                                      className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
+                                    />
+                                    <input type="number" value={cItem.margin || ""}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "margin", Number(e.target.value))}
+                                      className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
+                                    />
+                                    <input type="number" min="0" value={cItem.laborCost || ""}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "laborCost", Number(e.target.value))}
+                                      className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
+                                    />
+                                    <div className="w-24 text-right text-sm font-medium text-blue-900 px-2">
+                                      {new Intl.NumberFormat("ko-KR").format(cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0))}원
+                                    </div>
+                                    <button onClick={() => removeCostItem(item.id, cItem.id)}
+                                      className="p-1.5 text-blue-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-blue-500 py-3 text-center bg-white/50 rounded-md border border-blue-100 border-dashed mb-2">
+                                등록된 원가 내역이 없습니다.
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -722,6 +628,175 @@ export function QuoteEditor({
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card Layout */}
+          <div className="md:hidden space-y-4">
+            {items.map((item, idx) => (
+              <div key={item.id} className="border border-neutral-200 rounded-xl overflow-hidden">
+                {/* Card Header */}
+                <div className="bg-neutral-50 p-3 flex items-center justify-between">
+                  <span className="text-sm font-bold text-neutral-500">#{idx + 1}</span>
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    disabled={items.length === 1}
+                    className="p-1.5 text-neutral-400 hover:text-red-600 rounded-md disabled:opacity-30"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div className="p-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-neutral-500 mb-1 block">공정</label>
+                      <select
+                        value={item.category}
+                        onChange={(e) => handleItemChange(item.id, "category", e.target.value)}
+                        className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm"
+                      >
+                        {CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-neutral-500 mb-1 block">수량</label>
+                      <input
+                        type="number" min="0" value={item.quantity || ""}
+                        onChange={(e) => handleItemChange(item.id, "quantity", Number(e.target.value))}
+                        className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-center"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-neutral-500 mb-1 block">내용</label>
+                    <input
+                      type="text" value={item.description}
+                      onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
+                      placeholder="상세 내용을 입력하세요"
+                      className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-neutral-500 mb-1 block">단가</label>
+                      {item.costItems.length > 0 ? (
+                        <div className="px-2.5 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-right text-blue-800 font-medium">
+                          {new Intl.NumberFormat("ko-KR").format(item.unitPrice)}
+                        </div>
+                      ) : (
+                        <input type="number" min="0" value={item.unitPrice || ""}
+                          onChange={(e) => handleItemChange(item.id, "unitPrice", Number(e.target.value))}
+                          placeholder="0"
+                          className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-right"
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs text-neutral-500 mb-1 block">시공비</label>
+                      {item.costItems.length > 0 ? (
+                        <div className="px-2.5 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-right text-blue-800 font-medium">
+                          {new Intl.NumberFormat("ko-KR").format(item.laborCost)}
+                        </div>
+                      ) : (
+                        <input type="number" min="0" value={item.laborCost || ""}
+                          onChange={(e) => handleItemChange(item.id, "laborCost", Number(e.target.value))}
+                          placeholder="0"
+                          className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-right"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-neutral-100">
+                    <span className="text-sm text-neutral-500">금액</span>
+                    <span className="text-base font-bold">{new Intl.NumberFormat("ko-KR").format(item.amount)}원</span>
+                  </div>
+                  {showMargin && (
+                    <div className="flex items-center justify-between text-blue-600">
+                      <span className="text-sm">마진</span>
+                      <span className="text-sm font-bold">{new Intl.NumberFormat("ko-KR").format(item.margin)}원</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile Cost Items */}
+                {showMargin && (
+                  <div className="border-t border-blue-200 bg-blue-50/30">
+                    <button
+                      onClick={() => toggleExpand(item.id)}
+                      className="w-full flex items-center justify-between p-3 text-sm font-medium text-blue-800"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Calculator size={14} />
+                        원가/마진 ({item.costItems.length}건)
+                      </span>
+                      {expandedItems.has(item.id) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                    {expandedItems.has(item.id) && (
+                      <div className="px-3 pb-3 space-y-3">
+                        {item.costItems.map((cItem, cIndex) => (
+                          <div key={cItem.id} className="bg-white p-3 rounded-lg border border-blue-100 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-blue-500">원가 #{cIndex + 1}</span>
+                              <button onClick={() => removeCostItem(item.id, cItem.id)}
+                                className="p-1 text-blue-400 hover:text-red-600 rounded"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                            <input type="text" value={cItem.description}
+                              onChange={(e) => handleCostItemChange(item.id, cItem.id, "description", e.target.value)}
+                              placeholder="원가 내용 (예: 석고보드)"
+                              className="w-full px-2.5 py-1.5 bg-blue-50/50 border border-blue-200 rounded-md text-sm"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-blue-400 block mb-0.5">수량</label>
+                                <input type="number" min="0" value={cItem.quantity || ""}
+                                  onChange={(e) => handleCostItemChange(item.id, cItem.id, "quantity", Number(e.target.value))}
+                                  className="w-full px-2.5 py-1.5 bg-white border border-blue-200 rounded-md text-sm text-center"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-blue-400 block mb-0.5">원가</label>
+                                <input type="number" min="0" value={cItem.unitPrice || ""}
+                                  onChange={(e) => handleCostItemChange(item.id, cItem.id, "unitPrice", Number(e.target.value))}
+                                  className="w-full px-2.5 py-1.5 bg-white border border-blue-200 rounded-md text-sm text-right"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-blue-400 block mb-0.5">마진</label>
+                                <input type="number" value={cItem.margin || ""}
+                                  onChange={(e) => handleCostItemChange(item.id, cItem.id, "margin", Number(e.target.value))}
+                                  className="w-full px-2.5 py-1.5 bg-white border border-blue-200 rounded-md text-sm text-right"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-blue-400 block mb-0.5">시공비</label>
+                                <input type="number" min="0" value={cItem.laborCost || ""}
+                                  onChange={(e) => handleCostItemChange(item.id, cItem.id, "laborCost", Number(e.target.value))}
+                                  className="w-full px-2.5 py-1.5 bg-white border border-blue-200 rounded-md text-sm text-right"
+                                />
+                              </div>
+                            </div>
+                            <div className="text-right text-sm font-bold text-blue-900 pt-1 border-t border-blue-100">
+                              합계: {new Intl.NumberFormat("ko-KR").format(cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0))}원
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => addCostItem(item.id)}
+                          className="w-full py-2 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg flex items-center justify-center gap-1"
+                        >
+                          <Plus size={12} />
+                          원가 추가
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
 
           <button
@@ -733,39 +808,36 @@ export function QuoteEditor({
           </button>
 
           {/* Totals */}
-          <div className="mt-8 flex flex-col md:flex-row justify-end border-t border-neutral-200 pt-6 gap-6">
+          <div className="mt-6 md:mt-8 flex flex-col md:flex-row justify-end border-t border-neutral-200 pt-4 md:pt-6 gap-4 md:gap-6">
             {showMargin && (
-              <div className="w-full md:w-1/3 space-y-3 bg-blue-50 p-5 rounded-xl border border-blue-100">
-                <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+              <div className="w-full md:w-1/3 space-y-3 bg-blue-50 p-4 md:p-5 rounded-xl border border-blue-100">
+                <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2 text-sm md:text-base">
                   <Calculator size={16} />
                   마진 분석
                 </h4>
-                <div className="flex justify-between text-blue-800">
+                <div className="flex justify-between text-blue-800 text-sm">
                   <span>총 원가</span>
                   <span>{formatCurrency(totalCost)}</span>
                 </div>
-                <div className="flex justify-between text-blue-800 font-bold">
+                <div className="flex justify-between text-blue-800 font-bold text-sm">
                   <span>예상 총 마진</span>
                   <span>{formatCurrency(totalMargin)}</span>
                 </div>
-                <div className="flex justify-between text-blue-800 text-sm pt-2 border-t border-blue-200/50">
+                <div className="flex justify-between text-blue-800 text-xs md:text-sm pt-2 border-t border-blue-200/50">
                   <span>마진율 (공급가액 기준)</span>
                   <span className="font-bold">
-                    {subtotal > 0
-                      ? Math.round((totalMargin / subtotal) * 100)
-                      : 0}
-                    %
+                    {subtotal > 0 ? Math.round((totalMargin / subtotal) * 100) : 0}%
                   </span>
                 </div>
               </div>
             )}
 
             <div className="w-full md:w-1/3 space-y-3">
-              <div className="flex justify-between text-neutral-600">
+              <div className="flex justify-between text-neutral-600 text-sm">
                 <span>공급가액</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-xl font-bold pt-3 border-t border-neutral-200">
+              <div className="flex justify-between text-lg md:text-xl font-bold pt-3 border-t border-neutral-200">
                 <span>총 견적 금액 (VAT 별도)</span>
                 <span>{formatCurrency(total)}</span>
               </div>
@@ -774,8 +846,8 @@ export function QuoteEditor({
         </section>
 
         {/* Notes */}
-        <section className="bg-white p-6 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+        <section className="bg-white p-4 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
+          <h3 className="text-base md:text-lg font-semibold mb-4 md:mb-6 flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-sm">
               3
             </span>
@@ -784,8 +856,8 @@ export function QuoteEditor({
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={5}
-            className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all resize-y"
+            rows={4}
+            className="w-full px-3 md:px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all resize-y text-sm"
             placeholder="고객에게 전달할 특이사항, 결제 조건, 공사 유의사항 등을 입력하세요."
           />
         </section>

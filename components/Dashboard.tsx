@@ -35,10 +35,7 @@ export function Dashboard({
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"monthly" | "all">("monthly");
 
-  const years = Array.from(
-    { length: 5 },
-    (_, i) => new Date().getFullYear() - i,
-  );
+  const years = Array.from({ length: 7 }, (_, i) => 2024 + i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
   const filteredQuotes = quotes
@@ -232,6 +229,9 @@ export function Dashboard({
                     <th className="p-4 font-medium">고객명</th>
                     <th className="p-4 font-medium">현장 주소</th>
                     <th className="p-4 font-medium text-right">총 금액</th>
+                    <th className="p-4 font-medium text-right">원가</th>
+                    <th className="p-4 font-medium text-right">마진</th>
+                    <th className="p-4 font-medium text-center">마진%</th>
                     <th className="p-4 font-medium text-center">상태</th>
                     <th className="p-4 font-medium text-center">관리</th>
                   </tr>
@@ -252,6 +252,17 @@ export function Dashboard({
                       </td>
                       <td className="p-4 text-right font-medium">
                         {formatCurrency(quote.total)}
+                      </td>
+                      <td className="p-4 text-right text-sm text-neutral-500">
+                        {formatCurrency(quote.totalCost || 0)}
+                      </td>
+                      <td className="p-4 text-right text-sm font-medium text-emerald-600">
+                        {formatCurrency(quote.totalMargin || 0)}
+                      </td>
+                      <td className="p-4 text-center text-sm font-bold">
+                        <span className={`${(quote.totalMargin || 0) > 0 ? "text-emerald-600" : "text-neutral-400"}`}>
+                          {quote.subtotal > 0 ? Math.round(((quote.totalMargin || 0) / quote.subtotal) * 100) : 0}%
+                        </span>
                       </td>
                       <td
                         className="p-4 text-center"
@@ -350,12 +361,19 @@ export function Dashboard({
                       </select>
                     </div>
                   </div>
+                  <div className="text-sm text-neutral-500 mb-2">
+                    <span>{quote.date}</span>
+                    {quote.client.address && (
+                      <span className="ml-2">{quote.client.address}</span>
+                    )}
+                  </div>
                   <div className="flex items-center justify-between">
-                    <div className="text-sm text-neutral-500">
-                      <span>{quote.date}</span>
-                      {quote.client.address && (
-                        <span className="ml-2 truncate">{quote.client.address}</span>
-                      )}
+                    <div className="flex items-center gap-3 text-xs text-neutral-500">
+                      <span>원가 <span className="font-medium text-neutral-700">{formatCurrency(quote.totalCost || 0)}</span></span>
+                      <span>마진 <span className="font-medium text-emerald-600">{formatCurrency(quote.totalMargin || 0)}</span></span>
+                      <span className={`font-bold ${(quote.totalMargin || 0) > 0 ? "text-emerald-600" : "text-neutral-400"}`}>
+                        {quote.subtotal > 0 ? Math.round(((quote.totalMargin || 0) / quote.subtotal) * 100) : 0}%
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm">{formatCurrency(quote.total)}</span>

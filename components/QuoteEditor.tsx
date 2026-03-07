@@ -64,7 +64,8 @@ export function QuoteEditor({
       ? (totalMaterialCost + totalMarginSum) / Number(item.quantity)
       : 0;
     const amount = Number(item.quantity) * unitPrice + totalLaborCost;
-    return { ...item, unitPrice, laborCost: totalLaborCost, materialMargin: totalMarginSum, margin: totalMarginSum, amount };
+    const margin = totalMarginSum + totalLaborCost;
+    return { ...item, unitPrice, laborCost: totalLaborCost, materialMargin: totalMarginSum, margin, amount };
   };
 
   const handleItemChange = (id: string, field: keyof QuoteItem, value: any) => {

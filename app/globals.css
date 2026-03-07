@@ -12,12 +12,30 @@
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+    font-size: 12px !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   @page {
-    margin: 10mm;
+    margin: 8mm;
     size: A4;
+  }
+
+  tr, td, th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  table {
+    page-break-inside: auto !important;
+  }
+
+  section, div {
+    break-inside: avoid;
   }
 }

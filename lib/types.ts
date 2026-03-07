@@ -30,6 +30,26 @@ export interface ClientInfo {
   projectDate: string;
 }
 
+export interface SettlementItem {
+  itemId: string;
+  category: string;
+  description: string;
+  amount: number;
+  materialCost: number;
+  laborCost: number;
+  finalMargin: number;
+}
+
+export interface Settlement {
+  items: SettlementItem[];
+  totalAmount: number;
+  totalMaterialCost: number;
+  totalLaborCost: number;
+  finalMargin: number;
+  finalMarginPercent: number;
+  settledAt: string;
+}
+
 export interface Quote {
   id: string;
   date: string;
@@ -42,6 +62,7 @@ export interface Quote {
   totalMargin: number;
   notes: string;
   status: QuoteStatus;
+  settlement?: Settlement;
 }
 
 export const CATEGORIES = [

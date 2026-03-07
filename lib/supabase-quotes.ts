@@ -14,6 +14,7 @@ interface QuoteRow {
   total_margin: number;
   notes: string;
   status: string;
+  settlement: Quote["settlement"] | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,7 @@ function rowToQuote(row: QuoteRow): Quote {
     totalMargin: row.total_margin,
     notes: row.notes,
     status: row.status as Quote["status"],
+    settlement: row.settlement || undefined,
   };
 }
 
@@ -47,6 +49,7 @@ function quoteToRow(quote: Quote) {
     total_margin: quote.totalMargin,
     notes: quote.notes,
     status: quote.status,
+    settlement: quote.settlement || null,
   };
 }
 
@@ -81,6 +84,26 @@ export async function deleteQuote(id: string): Promise<boolean> {
 
   if (error) {
     console.error("Failed to delete quote:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function updateQuoteSettlement(
+  id: string,
+  settlement: Quote["settlement"],
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("quotes")
+    .update({
+      status: "시공완료",
+      settlement,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to save settlement:", error);
     return false;
   }
   return true;

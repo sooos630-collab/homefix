@@ -62,7 +62,8 @@ export function Dashboard({
   );
   const contractCount = contractedQuotes.length;
   const contractedMargin = contractedQuotes.reduce(
-    (sum, q) => sum + (q.totalMargin || 0),
+    (sum, q) =>
+      sum + (q.settlement ? q.settlement.finalMargin : (q.totalMargin || 0)),
     0,
   );
   const contractedTotal = contractedQuotes.reduce(
@@ -254,15 +255,34 @@ export function Dashboard({
                         {formatCurrency(quote.total)}
                       </td>
                       <td className="p-4 text-right text-sm text-neutral-500">
-                        {formatCurrency(quote.totalCost || 0)}
+                        {quote.settlement
+                          ? formatCurrency(quote.settlement.totalMaterialCost + quote.settlement.totalLaborCost)
+                          : formatCurrency(quote.totalCost || 0)}
                       </td>
-                      <td className="p-4 text-right text-sm font-medium text-emerald-600">
-                        {formatCurrency(quote.totalMargin || 0)}
+                      <td className="p-4 text-right text-sm font-medium">
+                        {(() => {
+                          const margin = quote.settlement ? quote.settlement.finalMargin : (quote.totalMargin || 0);
+                          const isSettled = !!quote.settlement;
+                          return (
+                            <span className={`${margin >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                              {isSettled && <span className="text-xs bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded mr-1">확정</span>}
+                              {formatCurrency(margin)}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="p-4 text-center text-sm font-bold">
-                        <span className={`${(quote.totalMargin || 0) > 0 ? "text-emerald-600" : "text-neutral-400"}`}>
-                          {quote.subtotal > 0 ? Math.round(((quote.totalMargin || 0) / quote.subtotal) * 100) : 0}%
-                        </span>
+                        {(() => {
+                          const margin = quote.settlement ? quote.settlement.finalMargin : (quote.totalMargin || 0);
+                          const pct = quote.settlement
+                            ? quote.settlement.finalMarginPercent
+                            : (quote.subtotal > 0 ? Math.round((margin / quote.subtotal) * 100) : 0);
+                          return (
+                            <span className={`${margin > 0 ? "text-emerald-600" : margin < 0 ? "text-red-600" : "text-neutral-400"}`}>
+                              {pct}%
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td
                         className="p-4 text-center"
@@ -273,11 +293,7 @@ export function Dashboard({
                           onChange={(e) => {
                             const newStatus = e.target.value as QuoteStatus;
                             if (newStatus === "시공완료") {
-                              if (
-                                window.confirm(
-                                  "시공이 완료되었습니까?\n확인을 누르시면 시공 완료 상태로 변경됩니다.",
-                                )
-                              ) {
+                              if (window.confirm("시공이 완료되었습니까?\n확인을 누르면 최종 정산 화면으로 이동합니다.")) {
                                 onUpdateStatus(quote.id, newStatus);
                               }
                             } else {
@@ -340,7 +356,7 @@ export function Dashboard({
                         onChange={(e) => {
                           const newStatus = e.target.value as QuoteStatus;
                           if (newStatus === "시공완료") {
-                            if (window.confirm("시공이 완료되었습니까?")) {
+                            if (window.confirm("시공이 완료되었습니까?\n확인을 누르면 최종 정산 화면으로 이동합니다.")) {
                               onUpdateStatus(quote.id, newStatus);
                             }
                           } else {
@@ -369,11 +385,23 @@ export function Dashboard({
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 text-xs text-neutral-500">
-                      <span>원가 <span className="font-medium text-neutral-700">{formatCurrency(quote.totalCost || 0)}</span></span>
-                      <span>마진 <span className="font-medium text-emerald-600">{formatCurrency(quote.totalMargin || 0)}</span></span>
-                      <span className={`font-bold ${(quote.totalMargin || 0) > 0 ? "text-emerald-600" : "text-neutral-400"}`}>
-                        {quote.subtotal > 0 ? Math.round(((quote.totalMargin || 0) / quote.subtotal) * 100) : 0}%
-                      </span>
+                      {quote.settlement ? (
+                        <>
+                          <span className="text-xs bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded font-bold">확정</span>
+                          <span>마진 <span className={`font-medium ${quote.settlement.finalMargin >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatCurrency(quote.settlement.finalMargin)}</span></span>
+                          <span className={`font-bold ${quote.settlement.finalMargin >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                            {quote.settlement.finalMarginPercent}%
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>원가 <span className="font-medium text-neutral-700">{formatCurrency(quote.totalCost || 0)}</span></span>
+                          <span>마진 <span className="font-medium text-emerald-600">{formatCurrency(quote.totalMargin || 0)}</span></span>
+                          <span className={`font-bold ${(quote.totalMargin || 0) > 0 ? "text-emerald-600" : "text-neutral-400"}`}>
+                            {quote.subtotal > 0 ? Math.round(((quote.totalMargin || 0) / quote.subtotal) * 100) : 0}%
+                          </span>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm">{formatCurrency(quote.total)}</span>

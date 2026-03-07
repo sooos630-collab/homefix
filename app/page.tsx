@@ -10,8 +10,10 @@ import {
   upsertQuote,
   deleteQuote as deleteQuoteFromDB,
   updateQuoteStatus,
+  updateQuoteSettlement,
 } from "@/lib/supabase-quotes";
-import type { Quote, QuoteStatus } from "@/lib/types";
+import { SettlementModal } from "@/components/SettlementModal";
+import type { Quote, QuoteStatus, Settlement } from "@/lib/types";
 
 export default function Home() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -21,6 +23,7 @@ export default function Home() {
   >("dashboard");
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
+  const [settlementQuote, setSettlementQuote] = useState<Quote | null>(null);
 
   const loadQuotes = useCallback(async () => {
     setLoading(true);
@@ -72,10 +75,32 @@ export default function Home() {
   };
 
   const handleUpdateStatus = async (id: string, status: QuoteStatus) => {
+    if (status === "시공완료") {
+      const quote = quotes.find((q) => q.id === id);
+      if (quote) {
+        setSettlementQuote(quote);
+      }
+      return;
+    }
     const success = await updateQuoteStatus(id, status);
     if (success) {
       setQuotes(quotes.map((q) => (q.id === id ? { ...q, status } : q)));
     }
+  };
+
+  const handleSettlementConfirm = async (settlement: Settlement) => {
+    if (!settlementQuote) return;
+    const success = await updateQuoteSettlement(settlementQuote.id, settlement);
+    if (success) {
+      setQuotes(
+        quotes.map((q) =>
+          q.id === settlementQuote.id
+            ? { ...q, status: "시공완료" as QuoteStatus, settlement }
+            : q,
+        ),
+      );
+    }
+    setSettlementQuote(null);
   };
 
   return (
@@ -115,6 +140,13 @@ export default function Home() {
           />
         )}
       </main>
+      {settlementQuote && (
+        <SettlementModal
+          quote={settlementQuote}
+          onConfirm={handleSettlementConfirm}
+          onCancel={() => setSettlementQuote(null)}
+        />
+      )}
     </div>
   );
 }

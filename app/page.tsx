@@ -53,14 +53,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col md:flex-row font-sans text-neutral-900 print:block print:bg-white">
+    <div className="min-h-screen bg-neutral-50 flex flex-col md:flex-row font-sans text-neutral-900 print:block print:bg-white print:min-h-0">
       <Sidebar
         currentView={currentView}
         editingQuote={editingQuote}
         onNavigate={setCurrentView}
         onCreateNew={handleCreateNew}
       />
-      <main className="flex-1 overflow-y-auto print:overflow-visible print:block">
+      <main className="flex-1 overflow-y-auto print:overflow-visible print:block print:flex-none print:w-full">
         {currentView === "dashboard" && (
           <Dashboard
             quotes={quotes}

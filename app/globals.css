@@ -1,8 +1,19 @@
 @import "tailwindcss";
 
 @media print {
-  body {
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+  }
+
+  html, body {
     background-color: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   @page {

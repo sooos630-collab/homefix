@@ -29,7 +29,7 @@ export function QuoteViewer({
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto pb-32 print:p-0 print:pb-0 print:max-w-none">
+    <div className="p-6 md:p-10 max-w-5xl mx-auto pb-32 print:p-0 print:pb-0 print:m-0 print:max-w-none">
       {/* Action Bar */}
       <div className="flex items-center justify-between mb-8 print:hidden">
         <button
@@ -65,7 +65,7 @@ export function QuoteViewer({
       </div>
 
       {/* Printable Document */}
-      <div className="bg-white p-10 md:p-16 rounded-none md:rounded-2xl border border-neutral-200 shadow-sm print:shadow-none print:border-none print:p-0 max-w-[210mm] mx-auto min-h-[297mm]">
+      <div className="bg-white p-10 md:p-16 rounded-none md:rounded-2xl border border-neutral-200 shadow-sm print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:max-w-none print:min-h-0 max-w-[210mm] mx-auto min-h-[297mm]">
         {/* Document Header */}
         <div className="text-center mb-12 border-b-2 border-neutral-900 pb-8">
           <h1 className="text-4xl font-bold tracking-widest mb-2">
@@ -75,7 +75,7 @@ export function QuoteViewer({
         </div>
 
         {/* Info Section */}
-        <div className="flex flex-col md:flex-row justify-between mb-12 gap-8">
+        <div className="flex flex-col md:flex-row justify-between mb-12 gap-8 print:flex-row print:gap-6">
           <div className="flex-1">
             <div className="text-xl font-bold mb-4 border-b border-neutral-200 pb-2">
               <span className="text-2xl">{quote.client.name}</span> 귀하
@@ -112,7 +112,7 @@ export function QuoteViewer({
             </table>
           </div>
 
-          <div className="flex-1 bg-neutral-50 p-6 rounded-xl border border-neutral-200">
+          <div className="flex-1 bg-neutral-50 p-6 rounded-xl border border-neutral-200 print:rounded-none print:border print:border-neutral-300">
             <h3 className="font-bold text-neutral-900 mb-4">공급자 정보</h3>
             <table className="w-full text-sm">
               <tbody>
@@ -146,7 +146,7 @@ export function QuoteViewer({
         </div>
 
         {/* Total Amount Highlight */}
-        <div className="bg-neutral-900 text-white p-6 rounded-xl mb-12 flex items-center justify-between">
+        <div className="bg-neutral-900 text-white p-6 rounded-xl mb-12 flex items-center justify-between print:rounded-none">
           <div className="text-lg font-medium opacity-80">
             총 견적 금액 (VAT 포함)
           </div>
@@ -156,7 +156,7 @@ export function QuoteViewer({
         </div>
 
         {/* Items Table */}
-        <table className="w-full text-sm mb-12 border-collapse">
+        <table className="w-full text-sm mb-12 border-collapse print:text-xs">
           <thead>
             <tr className="border-y-2 border-neutral-900 bg-neutral-50">
               <th className="py-3 px-2 text-center font-bold w-12">NO</th>
@@ -259,7 +259,7 @@ export function QuoteViewer({
 
         {/* Notes */}
         {quote.notes && (
-          <div className="border border-neutral-200 rounded-xl p-6 bg-neutral-50/50">
+          <div className="border border-neutral-200 rounded-xl p-6 bg-neutral-50/50 print:rounded-none">
             <h4 className="font-bold mb-3 flex items-center gap-2">
               <FileText size={16} />
               특기사항

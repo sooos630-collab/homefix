@@ -262,7 +262,7 @@ export function QuoteViewer({
           <div className="border border-neutral-200 rounded-xl p-6 bg-neutral-50/50 print:rounded-none print:p-3">
             <h4 className="font-bold mb-3 flex items-center gap-2 print:mb-1 print:text-sm">
               <FileText size={16} />
-              특기사항
+              특이사항
             </h4>
             <div className="text-sm text-neutral-700 whitespace-pre-wrap leading-relaxed print:text-xs print:leading-normal">
               {quote.notes}

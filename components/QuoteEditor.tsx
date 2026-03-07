@@ -686,14 +686,14 @@ export function QuoteEditor({
             <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-sm">
               3
             </span>
-            특기사항 및 안내
+            특이사항 및 안내
           </h3>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={5}
             className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all resize-y"
-            placeholder="고객에게 전달할 특기사항, 결제 조건, 공사 유의사항 등을 입력하세요."
+            placeholder="고객에게 전달할 특이사항, 결제 조건, 공사 유의사항 등을 입력하세요."
           />
         </section>
       </div>

@@ -1,13 +1,38 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   FileText,
   Printer,
   ChevronLeft,
   Trash2,
   Edit2,
+  Check,
 } from "lucide-react";
+
+interface SupplierInfo {
+  name: string;
+  representative: string;
+  contact: string;
+  address: string;
+}
+
+const DEFAULT_SUPPLIER: SupplierInfo = {
+  name: "꼼꼼한집수리",
+  representative: "송예담",
+  contact: "010-9573-7996",
+  address: "수원시 장안구 서부로 2181번길 4",
+};
+
+function loadSupplier(): SupplierInfo {
+  if (typeof window === "undefined") return DEFAULT_SUPPLIER;
+  try {
+    const saved = localStorage.getItem("supplierInfo");
+    return saved ? JSON.parse(saved) : DEFAULT_SUPPLIER;
+  } catch {
+    return DEFAULT_SUPPLIER;
+  }
+}
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Quote } from "@/lib/types";
 
@@ -24,6 +49,18 @@ export function QuoteViewer({
   onEdit,
   onDelete,
 }: QuoteViewerProps) {
+  const [supplier, setSupplier] = useState<SupplierInfo>(DEFAULT_SUPPLIER);
+  const [editingSupplier, setEditingSupplier] = useState(false);
+
+  useEffect(() => {
+    setSupplier(loadSupplier());
+  }, []);
+
+  const handleSaveSupplier = () => {
+    localStorage.setItem("supplierInfo", JSON.stringify(supplier));
+    setEditingSupplier(false);
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -113,32 +150,67 @@ export function QuoteViewer({
           </div>
 
           <div className="flex-1 bg-neutral-50 p-6 rounded-xl border border-neutral-200 print:rounded-none print:border print:border-neutral-300 print:p-3">
-            <h3 className="font-bold text-neutral-900 mb-4 print:mb-2 print:text-sm">공급자 정보</h3>
+            <div className="flex items-center justify-between mb-4 print:mb-2">
+              <h3 className="font-bold text-neutral-900 print:text-sm">공급자 정보</h3>
+              {!editingSupplier ? (
+                <button
+                  onClick={() => setEditingSupplier(true)}
+                  className="text-xs text-neutral-500 hover:text-neutral-900 flex items-center gap-1 print:hidden"
+                >
+                  <Edit2 size={12} />
+                  수정
+                </button>
+              ) : (
+                <button
+                  onClick={handleSaveSupplier}
+                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium print:hidden"
+                >
+                  <Check size={12} />
+                  저장
+                </button>
+              )}
+            </div>
             <table className="w-full text-sm print:text-xs">
               <tbody>
                 <tr>
                   <td className="py-1.5 font-medium text-neutral-500 w-20 print:py-0.5 print:w-14">
                     발급자
                   </td>
-                  <td className="py-1.5 font-bold print:py-0.5">꼼꼼한집수리</td>
+                  <td className="py-1.5 font-bold print:py-0.5">
+                    {editingSupplier ? (
+                      <input type="text" value={supplier.name} onChange={(e) => setSupplier({ ...supplier, name: e.target.value })} className="w-full px-2 py-0.5 border border-neutral-300 rounded text-sm" />
+                    ) : supplier.name}
+                  </td>
                 </tr>
                 <tr>
                   <td className="py-1.5 font-medium text-neutral-500 print:py-0.5">
                     대표자
                   </td>
-                  <td className="py-1.5 print:py-0.5">송예담</td>
+                  <td className="py-1.5 print:py-0.5">
+                    {editingSupplier ? (
+                      <input type="text" value={supplier.representative} onChange={(e) => setSupplier({ ...supplier, representative: e.target.value })} className="w-full px-2 py-0.5 border border-neutral-300 rounded text-sm" />
+                    ) : supplier.representative}
+                  </td>
                 </tr>
                 <tr>
                   <td className="py-1.5 font-medium text-neutral-500 print:py-0.5">
                     연락처
                   </td>
-                  <td className="py-1.5 print:py-0.5">010-9573-7996</td>
+                  <td className="py-1.5 print:py-0.5">
+                    {editingSupplier ? (
+                      <input type="text" value={supplier.contact} onChange={(e) => setSupplier({ ...supplier, contact: e.target.value })} className="w-full px-2 py-0.5 border border-neutral-300 rounded text-sm" />
+                    ) : supplier.contact}
+                  </td>
                 </tr>
                 <tr>
                   <td className="py-1.5 font-medium text-neutral-500 print:py-0.5">
                     주소
                   </td>
-                  <td className="py-1.5 print:py-0.5">수원시 장안구 서부로 2181번길 4</td>
+                  <td className="py-1.5 print:py-0.5">
+                    {editingSupplier ? (
+                      <input type="text" value={supplier.address} onChange={(e) => setSupplier({ ...supplier, address: e.target.value })} className="w-full px-2 py-0.5 border border-neutral-300 rounded text-sm" />
+                    ) : supplier.address}
+                  </td>
                 </tr>
               </tbody>
             </table>

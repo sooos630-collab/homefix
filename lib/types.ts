@@ -6,6 +6,7 @@ export interface CostItem {
   quantity: number;
   unitPrice: number;
   margin: number;
+  laborCost: number;
   amount: number;
 }
 

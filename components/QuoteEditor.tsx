@@ -55,33 +55,30 @@ export function QuoteEditor({
   );
   const [showMargin, setShowMargin] = useState(false);
 
+  const recalcFromCostItems = (item: QuoteItem): QuoteItem => {
+    if (item.costItems.length === 0) return item;
+    const totalMaterialCost = item.costItems.reduce((sum, c) => sum + c.amount, 0);
+    const totalMarginSum = item.costItems.reduce((sum, c) => sum + (Number(c.margin) || 0), 0);
+    const totalLaborCost = item.costItems.reduce((sum, c) => sum + (Number(c.laborCost) || 0), 0);
+    const unitPrice = Number(item.quantity) > 0
+      ? (totalMaterialCost + totalMarginSum) / Number(item.quantity)
+      : 0;
+    const amount = Number(item.quantity) * unitPrice + totalLaborCost;
+    return { ...item, unitPrice, laborCost: totalLaborCost, materialMargin: totalMarginSum, margin: totalMarginSum, amount };
+  };
+
   const handleItemChange = (id: string, field: keyof QuoteItem, value: any) => {
     setItems(
       items.map((item) => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
-          const totalMaterialCost = updatedItem.costItems.reduce(
-            (sum: number, c: CostItem) => sum + c.amount,
-            0,
-          );
 
-          if (field === "unitPrice") {
-            updatedItem.materialMargin =
-              Number(updatedItem.unitPrice) * Number(updatedItem.quantity) -
-              totalMaterialCost;
-          } else if (field === "materialMargin") {
-            updatedItem.unitPrice =
-              Number(updatedItem.quantity) > 0
-                ? (totalMaterialCost + Number(updatedItem.materialMargin)) /
-                  Number(updatedItem.quantity)
-                : 0;
-          } else if (field === "quantity") {
-            updatedItem.materialMargin =
-              Number(updatedItem.unitPrice) * Number(updatedItem.quantity) -
-              totalMaterialCost;
+          if (updatedItem.costItems.length > 0) {
+            return recalcFromCostItems(updatedItem);
           }
 
-          updatedItem.margin = Number(updatedItem.materialMargin);
+          updatedItem.margin = 0;
+          updatedItem.materialMargin = 0;
           updatedItem.amount =
             Number(updatedItem.quantity) * Number(updatedItem.unitPrice) +
             Number(updatedItem.laborCost);
@@ -115,31 +112,7 @@ export function QuoteEditor({
             return cItem;
           });
 
-          const totalMaterialCost = updatedCostItems.reduce(
-            (sum, c) => sum + c.amount,
-            0,
-          );
-          const totalMaterialMargin = updatedCostItems.reduce(
-            (sum, c) => sum + (Number(c.margin) || 0),
-            0,
-          );
-          const unitPrice =
-            Number(item.quantity) > 0
-              ? (totalMaterialCost + totalMaterialMargin) /
-                Number(item.quantity)
-              : 0;
-          const margin = totalMaterialMargin;
-          const amount =
-            Number(item.quantity) * unitPrice + Number(item.laborCost);
-
-          return {
-            ...item,
-            costItems: updatedCostItems,
-            materialMargin: totalMaterialMargin,
-            unitPrice,
-            margin,
-            amount,
-          };
+          return recalcFromCostItems({ ...item, costItems: updatedCostItems });
         }
         return item;
       }),
@@ -160,6 +133,7 @@ export function QuoteEditor({
                 quantity: 1,
                 unitPrice: 0,
                 margin: 0,
+                laborCost: 0,
                 amount: 0,
               },
             ],
@@ -177,25 +151,7 @@ export function QuoteEditor({
           const updatedCostItems = item.costItems.filter(
             (c) => c.id !== costItemId,
           );
-          const totalMaterialCost = updatedCostItems.reduce(
-            (sum, c) => sum + c.amount,
-            0,
-          );
-          const unitPrice =
-            Number(item.quantity) > 0
-              ? (totalMaterialCost + Number(item.materialMargin)) /
-                Number(item.quantity)
-              : 0;
-          const margin = Number(item.materialMargin);
-          const amount =
-            Number(item.quantity) * unitPrice + Number(item.laborCost);
-          return {
-            ...item,
-            costItems: updatedCostItems,
-            unitPrice,
-            margin,
-            amount,
-          };
+          return recalcFromCostItems({ ...item, costItems: updatedCostItems });
         }
         return item;
       }),
@@ -232,8 +188,8 @@ export function QuoteEditor({
   const totalCost = items.reduce(
     (sum, item) =>
       sum +
-      item.costItems.reduce((cSum, c) => cSum + c.amount, 0) +
-      (Number(item.laborCost) || 0),
+      item.costItems.reduce((cSum, c) => cSum + c.amount + (Number(c.laborCost) || 0), 0) +
+      (item.costItems.length === 0 ? Number(item.laborCost) || 0 : 0),
     0,
   );
   const totalMargin = items.reduce((sum, item) => sum + item.margin, 0);
@@ -473,36 +429,48 @@ export function QuoteEditor({
                         />
                       </td>
                       <td className="py-3 px-2 align-top">
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.unitPrice || ""}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "unitPrice",
-                              Number(e.target.value),
-                            )
-                          }
-                          className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-right"
-                          placeholder="청구 단가"
-                        />
+                        {item.costItems.length > 0 ? (
+                          <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-right text-blue-800 font-medium">
+                            {new Intl.NumberFormat("ko-KR").format(item.unitPrice)}
+                          </div>
+                        ) : (
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.unitPrice || ""}
+                            onChange={(e) =>
+                              handleItemChange(
+                                item.id,
+                                "unitPrice",
+                                Number(e.target.value),
+                              )
+                            }
+                            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-right"
+                            placeholder="청구 단가"
+                          />
+                        )}
                       </td>
                       <td className="py-3 px-2 align-top">
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.laborCost || ""}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "laborCost",
-                              Number(e.target.value),
-                            )
-                          }
-                          className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-right"
-                          placeholder="청구 시공비"
-                        />
+                        {item.costItems.length > 0 ? (
+                          <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-right text-blue-800 font-medium">
+                            {new Intl.NumberFormat("ko-KR").format(item.laborCost)}
+                          </div>
+                        ) : (
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.laborCost || ""}
+                            onChange={(e) =>
+                              handleItemChange(
+                                item.id,
+                                "laborCost",
+                                Number(e.target.value),
+                              )
+                            }
+                            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-right"
+                            placeholder="청구 시공비"
+                          />
+                        )}
                       </td>
                       {showMargin && (
                         <td className="py-3 px-2 text-right font-medium text-blue-600 align-top pt-5">
@@ -546,6 +514,16 @@ export function QuoteEditor({
 
                               {item.costItems.length > 0 ? (
                                 <div className="space-y-2">
+                                  <div className="flex items-center gap-2 text-xs text-blue-500 font-medium px-1">
+                                    <span className="w-4"></span>
+                                    <span className="flex-1">내용</span>
+                                    <span className="w-16 text-center">수량</span>
+                                    <span className="w-24 text-right">단가</span>
+                                    <span className="w-24 text-right">마진</span>
+                                    <span className="w-24 text-right">시공비</span>
+                                    <span className="w-24 text-right">원가</span>
+                                    <span className="w-8"></span>
+                                  </div>
                                   {item.costItems.map((cItem, cIndex) => (
                                     <div
                                       key={cItem.id}
@@ -612,6 +590,21 @@ export function QuoteEditor({
                                         placeholder="마진"
                                         className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
                                       />
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={cItem.laborCost || ""}
+                                        onChange={(e) =>
+                                          handleCostItemChange(
+                                            item.id,
+                                            cItem.id,
+                                            "laborCost",
+                                            Number(e.target.value),
+                                          )
+                                        }
+                                        placeholder="시공비"
+                                        className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
+                                      />
                                       <div className="w-24 text-right text-sm font-medium text-blue-900 px-2">
                                         {new Intl.NumberFormat("ko-KR").format(
                                           cItem.amount,
@@ -634,45 +627,6 @@ export function QuoteEditor({
                                   등록된 원가 내역이 없습니다.
                                 </div>
                               )}
-
-                              <div className="mt-3 bg-white/60 p-3 rounded-md border border-blue-100 space-y-2">
-                                <div className="flex justify-between items-center text-sm">
-                                  <span className="text-blue-700">
-                                    원가 합계
-                                  </span>
-                                  <span className="font-medium text-blue-900">
-                                    {new Intl.NumberFormat("ko-KR").format(
-                                      item.costItems.reduce(
-                                        (sum, c) => sum + c.amount,
-                                        0,
-                                      ),
-                                    )}
-                                    원
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                  <span className="text-blue-700">
-                                    + 자재 마진 합계
-                                  </span>
-                                  <span className="font-medium text-blue-900">
-                                    {new Intl.NumberFormat("ko-KR").format(
-                                      item.materialMargin,
-                                    )}
-                                    원
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center pt-2 border-t border-blue-200/50">
-                                  <span className="text-sm font-bold text-blue-900">
-                                    = 청구 단가
-                                  </span>
-                                  <span className="font-bold text-blue-900">
-                                    {new Intl.NumberFormat("ko-KR").format(
-                                      item.unitPrice,
-                                    )}
-                                    원
-                                  </span>
-                                </div>
-                              </div>
                             </div>
                           </div>
                         </td>

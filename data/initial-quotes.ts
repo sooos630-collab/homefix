@@ -26,6 +26,7 @@ export const initialQuotes: Quote[] = [
             quantity: 1,
             unitPrice: 400000,
             margin: 100000,
+            laborCost: 1000000,
             amount: 400000,
           },
         ],
@@ -47,6 +48,7 @@ export const initialQuotes: Quote[] = [
             quantity: 50,
             unitPrice: 4000,
             margin: 400000,
+            laborCost: 1200000,
             amount: 200000,
           },
           {
@@ -55,6 +57,7 @@ export const initialQuotes: Quote[] = [
             quantity: 30,
             unitPrice: 6000,
             margin: 420000,
+            laborCost: 800000,
             amount: 180000,
           },
         ],

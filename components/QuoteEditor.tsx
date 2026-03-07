@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   Trash2,
   Calculator,
+  FileDown,
 } from "lucide-react";
 import { generateId, formatCurrency } from "@/lib/utils";
 import type { Quote, QuoteItem, CostItem, ClientInfo } from "@/lib/types";
@@ -195,6 +196,90 @@ export function QuoteEditor({
   );
   const totalMargin = items.reduce((sum, item) => sum + item.margin, 0);
 
+  const handlePrintMargin = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    const rows = items
+      .map((item, idx) => {
+        const parentRow = `<tr style="background:#f5f5f5;font-weight:bold">
+          <td style="padding:6px 8px;border:1px solid #ddd;text-align:center">${idx + 1}</td>
+          <td style="padding:6px 8px;border:1px solid #ddd">${item.category}</td>
+          <td style="padding:6px 8px;border:1px solid #ddd">${item.description}</td>
+          <td style="padding:6px 8px;border:1px solid #ddd;text-align:center">${item.quantity}</td>
+          <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(item.unitPrice)}</td>
+          <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(item.laborCost)}</td>
+          <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(item.margin)}</td>
+          <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(item.amount)}</td>
+        </tr>`;
+
+        const costRows = item.costItems
+          .map(
+            (c, ci) =>
+              `<tr style="color:#555">
+                <td style="padding:4px 8px;border:1px solid #ddd;text-align:center"></td>
+                <td style="padding:4px 8px;border:1px solid #ddd"></td>
+                <td style="padding:4px 8px;border:1px solid #ddd;padding-left:24px">└ ${c.description}</td>
+                <td style="padding:4px 8px;border:1px solid #ddd;text-align:center">${c.quantity}</td>
+                <td style="padding:4px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(c.unitPrice)} <span style="color:#999;font-size:11px">(원가)</span></td>
+                <td style="padding:4px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(c.laborCost)}</td>
+                <td style="padding:4px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(c.margin)}</td>
+                <td style="padding:4px 8px;border:1px solid #ddd;text-align:right">${new Intl.NumberFormat("ko-KR").format(c.amount + (Number(c.margin) || 0) + (Number(c.laborCost) || 0))}</td>
+              </tr>`,
+          )
+          .join("");
+
+        return parentRow + costRows;
+      })
+      .join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>원가/마진 내역서 - ${client.name || "미입력"}</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    body { font-family: -apple-system, sans-serif; font-size: 13px; color: #222; margin: 0; padding: 20px; }
+    h1 { font-size: 20px; text-align: center; margin-bottom: 4px; }
+    .info { text-align: center; color: #666; margin-bottom: 16px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #222; color: #fff; padding: 8px; border: 1px solid #222; font-size: 12px; }
+    .summary { margin-top: 16px; text-align: right; font-size: 14px; }
+    .summary span { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>원가 / 마진 내역서</h1>
+  <div class="info">${client.name || "-"} | ${date} | ${client.address || "-"}</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:5%">NO</th>
+        <th style="width:12%">공정</th>
+        <th style="width:25%">내용</th>
+        <th style="width:7%">수량</th>
+        <th style="width:14%">단가</th>
+        <th style="width:12%">시공비</th>
+        <th style="width:12%">마진</th>
+        <th style="width:13%">금액</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="summary">
+    <p>총 원가: <span>${formatCurrency(totalCost)}</span></p>
+    <p>총 마진: <span>${formatCurrency(totalMargin)}</span> (마진율: ${subtotal > 0 ? Math.round((totalMargin / subtotal) * 100) : 0}%)</p>
+    <p style="font-size:16px;margin-top:8px">총 견적 금액 (VAT 별도): <span>${formatCurrency(total)}</span></p>
+  </div>
+  <script>window.onload=function(){window.print();}</script>
+</body>
+</html>`;
+
+    win.document.write(html);
+    win.document.close();
+  };
+
   const handleSave = () => {
     if (!client.name) {
       alert("고객명을 입력해주세요.");
@@ -345,6 +430,13 @@ export function QuoteEditor({
               >
                 <Calculator size={16} />
                 {showMargin ? "원가/마진 숨기기" : "원가/마진 입력하기"}
+              </button>
+              <button
+                onClick={handlePrintMargin}
+                className="text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+              >
+                <FileDown size={16} />
+                원가/마진 PDF
               </button>
             </div>
           </div>

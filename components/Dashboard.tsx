@@ -13,6 +13,7 @@ import type { Quote, QuoteStatus } from "@/lib/types";
 
 interface DashboardProps {
   quotes: Quote[];
+  loading?: boolean;
   onCreateNew: () => void;
   onView: (q: Quote) => void;
   onDelete: (id: string) => void;
@@ -21,6 +22,7 @@ interface DashboardProps {
 
 export function Dashboard({
   quotes,
+  loading,
   onCreateNew,
   onView,
   onDelete,
@@ -168,7 +170,11 @@ export function Dashboard({
           </div>
         </div>
 
-        {filteredQuotes.length === 0 ? (
+        {loading ? (
+          <div className="p-12 text-center text-neutral-500">
+            <p className="text-lg font-medium">불러오는 중...</p>
+          </div>
+        ) : filteredQuotes.length === 0 ? (
           <div className="p-12 text-center text-neutral-500 flex flex-col items-center">
             <FileText size={48} className="text-neutral-300 mb-4" />
             <p className="text-lg font-medium text-neutral-900 mb-1">

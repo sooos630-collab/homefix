@@ -1,20 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Dashboard } from "@/components/Dashboard";
 import { QuoteEditor } from "@/components/QuoteEditor";
 import { QuoteViewer } from "@/components/QuoteViewer";
-import { initialQuotes } from "@/data/initial-quotes";
+import {
+  fetchQuotes,
+  upsertQuote,
+  deleteQuote as deleteQuoteFromDB,
+  updateQuoteStatus,
+} from "@/lib/supabase-quotes";
 import type { Quote, QuoteStatus } from "@/lib/types";
 
 export default function Home() {
-  const [quotes, setQuotes] = useState<Quote[]>(initialQuotes);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<
     "dashboard" | "editor" | "viewer"
   >("dashboard");
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
+
+  const loadQuotes = useCallback(async () => {
+    setLoading(true);
+    const data = await fetchQuotes();
+    setQuotes(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadQuotes();
+  }, [loadQuotes]);
 
   const handleCreateNew = () => {
     setEditingQuote(null);
@@ -31,25 +48,34 @@ export default function Home() {
     setCurrentView("viewer");
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("정말로 이 견적서를 삭제하시겠습니까?")) {
-      setQuotes(quotes.filter((q) => q.id !== id));
-      if (viewingQuote?.id === id) setCurrentView("dashboard");
+      const success = await deleteQuoteFromDB(id);
+      if (success) {
+        setQuotes(quotes.filter((q) => q.id !== id));
+        if (viewingQuote?.id === id) setCurrentView("dashboard");
+      }
     }
   };
 
-  const handleSaveQuote = (quote: Quote) => {
-    if (editingQuote) {
-      setQuotes(quotes.map((q) => (q.id === quote.id ? quote : q)));
-    } else {
-      setQuotes([quote, ...quotes]);
+  const handleSaveQuote = async (quote: Quote) => {
+    const success = await upsertQuote(quote);
+    if (success) {
+      if (editingQuote) {
+        setQuotes(quotes.map((q) => (q.id === quote.id ? quote : q)));
+      } else {
+        setQuotes([quote, ...quotes]);
+      }
+      setViewingQuote(quote);
+      setCurrentView("viewer");
     }
-    setViewingQuote(quote);
-    setCurrentView("viewer");
   };
 
-  const handleUpdateStatus = (id: string, status: QuoteStatus) => {
-    setQuotes(quotes.map((q) => (q.id === id ? { ...q, status } : q)));
+  const handleUpdateStatus = async (id: string, status: QuoteStatus) => {
+    const success = await updateQuoteStatus(id, status);
+    if (success) {
+      setQuotes(quotes.map((q) => (q.id === id ? { ...q, status } : q)));
+    }
   };
 
   return (
@@ -64,6 +90,7 @@ export default function Home() {
         {currentView === "dashboard" && (
           <Dashboard
             quotes={quotes}
+            loading={loading}
             onCreateNew={handleCreateNew}
             onView={handleView}
             onDelete={handleDelete}

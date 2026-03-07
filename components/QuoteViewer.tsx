@@ -276,9 +276,7 @@ export function QuoteViewer({
                       className="bg-neutral-50/80 text-neutral-600"
                     >
                       <td className="py-2 px-2 print:py-1 print:px-1"></td>
-                      <td className="py-2 px-2 text-sm text-neutral-400 text-right print:py-1 print:px-1 print:text-xs">
-                        자재/기타
-                      </td>
+                      <td className="py-2 px-2 print:py-1 print:px-1"></td>
                       <td className="py-2 px-2 text-sm pl-4 print:py-1 print:px-1 print:text-xs print:pl-2">
                         <span className="text-neutral-400 mr-2">└</span>
                         {cItem.description}

@@ -608,7 +608,7 @@ export function QuoteEditor({
                                       />
                                       <div className="w-24 text-right text-sm font-medium text-blue-900 px-2">
                                         {new Intl.NumberFormat("ko-KR").format(
-                                          cItem.amount,
+                                          cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0),
                                         )}
                                         원
                                       </div>

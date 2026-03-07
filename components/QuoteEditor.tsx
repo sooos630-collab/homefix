@@ -346,13 +346,6 @@ export function QuoteEditor({
                 <Calculator size={16} />
                 {showMargin ? "원가/마진 숨기기" : "원가/마진 입력하기"}
               </button>
-              <button
-                onClick={addItem}
-                className="text-sm font-medium text-neutral-900 bg-neutral-100 hover:bg-neutral-200 px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
-              >
-                <Plus size={16} />
-                항목 추가
-              </button>
             </div>
           </div>
 
@@ -638,6 +631,14 @@ export function QuoteEditor({
               </tbody>
             </table>
           </div>
+
+          <button
+            onClick={addItem}
+            className="w-full mt-4 py-3 text-sm font-medium text-neutral-600 bg-neutral-50 hover:bg-neutral-100 border border-dashed border-neutral-300 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus size={16} />
+            항목 추가
+          </button>
 
           {/* Totals */}
           <div className="mt-8 flex flex-col md:flex-row justify-end border-t border-neutral-200 pt-6 gap-6">

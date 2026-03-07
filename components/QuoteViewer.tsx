@@ -118,27 +118,27 @@ export function QuoteViewer({
               <tbody>
                 <tr>
                   <td className="py-1.5 font-medium text-neutral-500 w-20 print:py-0.5 print:w-14">
-                    상호
+                    발급자
                   </td>
-                  <td className="py-1.5 font-bold print:py-0.5">꼼꼼한 집수리</td>
+                  <td className="py-1.5 font-bold print:py-0.5">꼼꼼한집수리</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 font-medium text-neutral-500 print:py-0.5">
                     대표자
                   </td>
-                  <td className="py-1.5 print:py-0.5">홍길동</td>
+                  <td className="py-1.5 print:py-0.5">송예담</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 font-medium text-neutral-500 print:py-0.5">
                     연락처
                   </td>
-                  <td className="py-1.5 print:py-0.5">02-1234-5678</td>
+                  <td className="py-1.5 print:py-0.5">010-9573-7996</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 font-medium text-neutral-500 print:py-0.5">
                     주소
                   </td>
-                  <td className="py-1.5 print:py-0.5">서울시 서초구 서초대로 123</td>
+                  <td className="py-1.5 print:py-0.5">수원시 장안구 서부로 2181번길 4</td>
                 </tr>
               </tbody>
             </table>

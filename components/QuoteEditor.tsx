@@ -519,10 +519,10 @@ export function QuoteEditor({
                                     <span className="w-4"></span>
                                     <span className="flex-1">내용</span>
                                     <span className="w-16 text-center">수량</span>
-                                    <span className="w-24 text-right">단가</span>
+                                    <span className="w-24 text-right">원가</span>
                                     <span className="w-24 text-right">마진</span>
                                     <span className="w-24 text-right">시공비</span>
-                                    <span className="w-24 text-right">원가</span>
+                                    <span className="w-24 text-right">합계</span>
                                     <span className="w-8"></span>
                                   </div>
                                   {item.costItems.map((cItem, cIndex) => (

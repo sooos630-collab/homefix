@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Dashboard } from "@/components/Dashboard";
 import { QuoteEditor } from "@/components/QuoteEditor";
 import { QuoteViewer } from "@/components/QuoteViewer";
+import { SettlementPage } from "@/components/SettlementPage";
 import {
   fetchQuotes,
   upsertQuote,
@@ -12,14 +13,13 @@ import {
   updateQuoteStatus,
   updateQuoteSettlement,
 } from "@/lib/supabase-quotes";
-import { SettlementModal } from "@/components/SettlementModal";
 import type { Quote, QuoteStatus, Settlement } from "@/lib/types";
 
 export default function Home() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<
-    "dashboard" | "editor" | "viewer"
+    "dashboard" | "editor" | "viewer" | "settlement"
   >("dashboard");
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
@@ -79,6 +79,7 @@ export default function Home() {
       const quote = quotes.find((q) => q.id === id);
       if (quote) {
         setSettlementQuote(quote);
+        setCurrentView("settlement");
       }
       return;
     }
@@ -101,6 +102,7 @@ export default function Home() {
       );
     }
     setSettlementQuote(null);
+    setCurrentView("dashboard");
   };
 
   return (
@@ -139,14 +141,17 @@ export default function Home() {
             onDelete={() => handleDelete(viewingQuote.id)}
           />
         )}
+        {currentView === "settlement" && settlementQuote && (
+          <SettlementPage
+            quote={settlementQuote}
+            onConfirm={handleSettlementConfirm}
+            onCancel={() => {
+              setSettlementQuote(null);
+              setCurrentView("dashboard");
+            }}
+          />
+        )}
       </main>
-      {settlementQuote && (
-        <SettlementModal
-          quote={settlementQuote}
-          onConfirm={handleSettlementConfirm}
-          onCancel={() => setSettlementQuote(null)}
-        />
-      )}
     </div>
   );
 }

@@ -30,21 +30,36 @@ export interface ClientInfo {
   projectDate: string;
 }
 
-export interface SettlementItem {
-  itemId: string;
+export interface SettlementCostEntry {
+  id: string;
+  parentItemId: string;
+  costItemId: string;
   category: string;
   description: string;
-  amount: number;
+  quotedAmount: number;
   materialCost: number;
-  laborCost: number;
-  finalMargin: number;
+}
+
+export interface LaborPayment {
+  id: string;
+  name: string;
+  amount: number;
+}
+
+export interface PartnerPayment {
+  id: string;
+  name: string;
+  amount: number;
 }
 
 export interface Settlement {
-  items: SettlementItem[];
-  totalAmount: number;
+  costEntries: SettlementCostEntry[];
+  laborPayments: LaborPayment[];
+  partnerPayments: PartnerPayment[];
+  totalQuotedAmount: number;
   totalMaterialCost: number;
   totalLaborCost: number;
+  totalPartnerCost: number;
   finalMargin: number;
   finalMarginPercent: number;
   settledAt: string;

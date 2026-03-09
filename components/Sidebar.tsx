@@ -4,9 +4,9 @@ import { FileText, LayoutDashboard, Plus, Settings } from "lucide-react";
 import type { Quote } from "@/lib/types";
 
 interface SidebarProps {
-  currentView: "dashboard" | "editor" | "viewer";
+  currentView: "dashboard" | "editor" | "viewer" | "settlement";
   editingQuote: Quote | null;
-  onNavigate: (view: "dashboard" | "editor" | "viewer") => void;
+  onNavigate: (view: "dashboard" | "editor" | "viewer" | "settlement") => void;
   onCreateNew: () => void;
 }
 

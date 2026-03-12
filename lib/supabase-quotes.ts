@@ -23,14 +23,29 @@ interface QuoteRow {
 function migrateSettlement(s: any): Settlement | undefined {
   if (!s) return undefined;
   // 기존 laborPayments+partnerPayments → payments 통합
-  if (s.payments) return s as Settlement;
+  if (s.payments) {
+    // parentItemId가 없는 기존 payments에 빈값 채우기
+    const fixed = (s.payments as any[]).map((p: any) => ({
+      ...p,
+      parentItemId: p.parentItemId || "",
+      vendorId: p.vendorId || "",
+    }));
+    return { ...s, payments: fixed } as Settlement;
+  }
   const payments = [
     ...((s.laborPayments as any[]) || []),
     ...((s.partnerPayments as any[]) || []),
-  ];
+  ].map((p: any) => ({
+    ...p,
+    parentItemId: p.parentItemId || "",
+    vendorId: p.vendorId || "",
+  }));
   const totalPayments = payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
   return {
-    costEntries: s.costEntries || [],
+    costEntries: ((s.costEntries as any[]) || []).map((entry: any) => ({
+      ...entry,
+      vendorId: entry.vendorId || "",
+    })),
     payments,
     totalQuotedAmount: s.totalQuotedAmount || 0,
     totalMaterialCost: s.totalMaterialCost || 0,

@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { ExecutiveDashboard } from "@/components/ExecutiveDashboard";
 import { Dashboard } from "@/components/Dashboard";
 import { QuoteEditor } from "@/components/QuoteEditor";
 import { QuoteViewer } from "@/components/QuoteViewer";
 import { SettlementPage } from "@/components/SettlementPage";
 import { SettlementList } from "@/components/SettlementList";
+import { VendorList } from "@/components/VendorList";
 import {
   fetchQuotes,
   upsertQuote,
@@ -20,8 +22,15 @@ export default function Home() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<
-    "dashboard" | "editor" | "viewer" | "settlement" | "settlements"
-  >("dashboard");
+    | "overview"
+    | "quotes"
+    | "editor"
+    | "viewer"
+    | "settlement"
+    | "settlements"
+    | "vendors-purchase"
+    | "vendors-partner"
+  >("overview");
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
   const [settlementQuote, setSettlementQuote] = useState<Quote | null>(null);
@@ -58,7 +67,7 @@ export default function Home() {
       const success = await deleteQuoteFromDB(id);
       if (success) {
         setQuotes(quotes.filter((q) => q.id !== id));
-        if (viewingQuote?.id === id) setCurrentView("dashboard");
+        if (viewingQuote?.id === id) setCurrentView("quotes");
       }
     }
   };
@@ -134,7 +143,7 @@ export default function Home() {
       setViewingQuote(updatedQuote);
       setCurrentView("viewer");
     } else {
-      setCurrentView("dashboard");
+      setCurrentView("quotes");
     }
     setSettlementQuote(null);
   };
@@ -148,7 +157,13 @@ export default function Home() {
         onCreateNew={handleCreateNew}
       />
       <main className="flex-1 overflow-y-auto print:overflow-visible print:block print:flex-none print:w-full">
-        {currentView === "dashboard" && (
+        {currentView === "overview" && (
+          <ExecutiveDashboard
+            quotes={quotes}
+            onNavigate={(view) => setCurrentView(view)}
+          />
+        )}
+        {currentView === "quotes" && (
           <Dashboard
             quotes={quotes}
             loading={loading}
@@ -163,14 +178,14 @@ export default function Home() {
             initialQuote={editingQuote}
             onSave={handleSaveQuote}
             onCancel={() =>
-              setCurrentView(editingQuote ? "viewer" : "dashboard")
+              setCurrentView(editingQuote ? "viewer" : "quotes")
             }
           />
         )}
         {currentView === "viewer" && viewingQuote && (
           <QuoteViewer
             quote={viewingQuote}
-            onBack={() => setCurrentView("dashboard")}
+            onBack={() => setCurrentView("quotes")}
             onEdit={() => handleEdit(viewingQuote)}
             onDelete={() => handleDelete(viewingQuote.id)}
             onSettlement={() => {
@@ -192,13 +207,33 @@ export default function Home() {
             }}
           />
         )}
+        {currentView === "vendors-purchase" && (
+          <VendorList
+            vendorType="purchase"
+            quotes={quotes}
+            onViewQuote={handleView}
+            onNavigateVendorType={(vendorType) =>
+              setCurrentView(vendorType === "purchase" ? "vendors-purchase" : "vendors-partner")
+            }
+          />
+        )}
+        {currentView === "vendors-partner" && (
+          <VendorList
+            vendorType="partner"
+            quotes={quotes}
+            onViewQuote={handleView}
+            onNavigateVendorType={(vendorType) =>
+              setCurrentView(vendorType === "purchase" ? "vendors-purchase" : "vendors-partner")
+            }
+          />
+        )}
         {currentView === "settlement" && settlementQuote && (
           <SettlementPage
             quote={settlementQuote}
             onConfirm={handleSettlementConfirm}
             onCancel={() => {
               setSettlementQuote(null);
-              setCurrentView("dashboard");
+              setCurrentView("quotes");
             }}
           />
         )}

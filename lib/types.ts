@@ -34,6 +34,7 @@ export interface SettlementCostEntry {
   id: string;
   parentItemId: string;
   costItemId: string;
+  vendorId: string;
   category: string;
   description: string;
   quotedAmount: number;
@@ -42,6 +43,8 @@ export interface SettlementCostEntry {
 
 export interface PaymentEntry {
   id: string;
+  parentItemId: string;
+  vendorId: string;
   name: string;
   amount: number;
 }
@@ -98,6 +101,33 @@ export interface Quote {
   status: QuoteStatus;
   settlement?: Settlement;
   versions?: QuoteVersion[];
+}
+
+export type VendorType = "purchase" | "partner";
+
+export type VendorDocumentType = "businessRegistration" | "bankbookCopy";
+
+export interface VendorDocumentSummary {
+  name: string;
+  uploadedAt: string;
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  vendorType: VendorType;
+  representative: string;
+  contact: string;
+  category: string;
+  businessNumber: string;
+  address: string;
+  bankName: string;
+  bankAccount: string;
+  accountHolder: string;
+  memo: string;
+  createdAt: string;
+  updatedAt: string;
+  documents: Partial<Record<VendorDocumentType, VendorDocumentSummary>>;
 }
 
 export const CATEGORIES = [

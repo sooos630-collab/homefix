@@ -314,15 +314,7 @@ export function Dashboard({
                       </button>
                       {next && (
                         <button
-                          onClick={() => {
-                            if (next === "시공완료") {
-                              if (window.confirm("시공이 완료되었습니까?\n확인을 누르면 최종 정산 화면으로 이동합니다.")) {
-                                onUpdateStatus(quote.id, next);
-                              }
-                            } else {
-                              onUpdateStatus(quote.id, next);
-                            }
-                          }}
+                          onClick={() => onUpdateStatus(quote.id, next)}
                           className={`flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all active:scale-[0.97] ${
                             next === "계약"
                               ? "bg-toss-blue text-white hover:bg-toss-blue-dark"
@@ -483,15 +475,7 @@ export function Dashboard({
                             value={quote.status}
                             onChange={(e) => {
                               const newStatus = e.target.value as QuoteStatus;
-                              if (newStatus === "시공완료") {
-                                if (window.confirm("시공이 완료되었습니까?\n확인을 누르면 비용정산 화면으로 이동합니다.")) {
-                                  onUpdateStatus(quote.id, newStatus);
-                                }
-                                // confirm 취소 시 select 원래값으로 복원
-                                e.target.value = quote.status;
-                              } else {
-                                onUpdateStatus(quote.id, newStatus);
-                              }
+                              onUpdateStatus(quote.id, newStatus);
                             }}
                             className={`text-[11px] font-bold px-3 py-1.5 rounded-full focus:outline-none cursor-pointer transition-colors ${statusStyle(quote.status)}`}
                           >
@@ -534,14 +518,7 @@ export function Dashboard({
                           value={quote.status}
                           onChange={(e) => {
                             const newStatus = e.target.value as QuoteStatus;
-                            if (newStatus === "시공완료") {
-                              if (window.confirm("시공이 완료되었습니까?\n확인을 누르면 비용정산 화면으로 이동합니다.")) {
-                                onUpdateStatus(quote.id, newStatus);
-                              }
-                              e.target.value = quote.status;
-                            } else {
-                              onUpdateStatus(quote.id, newStatus);
-                            }
+                            onUpdateStatus(quote.id, newStatus);
                           }}
                           className={`text-[11px] font-bold px-2.5 py-1 rounded-full focus:outline-none cursor-pointer ${statusStyle(quote.status)}`}
                         >

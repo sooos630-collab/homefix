@@ -125,11 +125,7 @@ export function QuoteViewer({
           <div className="px-4 md:px-6 py-2 border-t border-toss-divider bg-toss-green-light/50 flex items-center justify-between">
             <span className="text-[13px] text-toss-text-secondary font-medium">시공이 완료되었나요?</span>
             <button
-              onClick={() => {
-                if (window.confirm("시공이 완료되었습니까?\n확인을 누르면 비용정산 화면으로 이동합니다.")) {
-                  onSettlement();
-                }
-              }}
+              onClick={() => onSettlement()}
               className="flex items-center gap-1.5 px-4 py-2 bg-toss-green text-white text-[13px] font-semibold rounded-xl hover:bg-toss-green/80 active:scale-[0.97] transition-all"
             >
               <CheckCircle size={14} />

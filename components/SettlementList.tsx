@@ -237,11 +237,7 @@ export function SettlementList({ quotes, onView, onSettle }: SettlementListProps
             </div>
             {onSettle && (
               <button
-                onClick={() => {
-                  if (window.confirm("시공이 완료되었습니까?\n확인을 누르면 비용정산 화면으로 이동합니다.")) {
-                    onSettle(q);
-                  }
-                }}
+                onClick={() => onSettle(q)}
                 className="flex items-center gap-1 px-3 py-1.5 bg-toss-green text-white text-[12px] font-semibold rounded-lg hover:bg-toss-green/80 active:scale-[0.97] transition-all"
               >
                 시공완료 · 정산 <ArrowRight size={12} />
@@ -681,7 +677,7 @@ export function SettlementList({ quotes, onView, onSettle }: SettlementListProps
                       </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         {!isSettled && onSettle && (
-                          <button onClick={() => { if (window.confirm("시공이 완료되었습니까?\n확인을 누르면 비용정산 화면으로 이동합니다.")) { onSettle(q); } }}
+                          <button onClick={() => onSettle(q)}
                             className="flex items-center gap-1 px-3 py-1.5 bg-toss-green text-white text-[11px] font-semibold rounded-lg hover:bg-toss-green/80 active:scale-[0.97] transition-all">
                             정산 <ArrowRight size={11} />
                           </button>

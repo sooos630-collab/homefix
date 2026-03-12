@@ -40,29 +40,48 @@ export interface SettlementCostEntry {
   materialCost: number;
 }
 
-export interface LaborPayment {
+export interface PaymentEntry {
   id: string;
   name: string;
   amount: number;
 }
 
-export interface PartnerPayment {
-  id: string;
-  name: string;
-  amount: number;
-}
+/** @deprecated 기존 호환용 */
+export type LaborPayment = PaymentEntry;
+/** @deprecated 기존 호환용 */
+export type PartnerPayment = PaymentEntry;
 
 export interface Settlement {
   costEntries: SettlementCostEntry[];
-  laborPayments: LaborPayment[];
-  partnerPayments: PartnerPayment[];
+  payments: PaymentEntry[];
   totalQuotedAmount: number;
   totalMaterialCost: number;
-  totalLaborCost: number;
-  totalPartnerCost: number;
+  totalPayments: number;
   finalMargin: number;
   finalMarginPercent: number;
   settledAt: string;
+  /** @deprecated 기존 데이터 호환 */
+  laborPayments?: PaymentEntry[];
+  /** @deprecated 기존 데이터 호환 */
+  partnerPayments?: PaymentEntry[];
+  /** @deprecated */
+  totalLaborCost?: number;
+  /** @deprecated */
+  totalPartnerCost?: number;
+}
+
+export interface QuoteVersion {
+  version: number;
+  savedAt: string;
+  date: string;
+  client: ClientInfo;
+  items: QuoteItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  totalCost: number;
+  totalMargin: number;
+  notes: string;
 }
 
 export interface Quote {
@@ -78,6 +97,7 @@ export interface Quote {
   notes: string;
   status: QuoteStatus;
   settlement?: Settlement;
+  versions?: QuoteVersion[];
 }
 
 export const CATEGORIES = [

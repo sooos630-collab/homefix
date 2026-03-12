@@ -1,5 +1,87 @@
 @import "tailwindcss";
 
+/* Toss Brand Color System */
+@theme {
+  --color-toss-blue: #3182F6;
+  --color-toss-blue-dark: #1B64DA;
+  --color-toss-blue-light: #E8F3FF;
+  --color-toss-bg: #F2F4F6;
+  --color-toss-card: #FFFFFF;
+  --color-toss-text: #191F28;
+  --color-toss-text-secondary: #8B95A1;
+  --color-toss-text-tertiary: #B0B8C1;
+  --color-toss-border: #E5E8EB;
+  --color-toss-divider: #F2F4F6;
+  --color-toss-input: #F2F4F6;
+  --color-toss-green: #00C950;
+  --color-toss-green-light: #E8FAF0;
+  --color-toss-red: #F04452;
+  --color-toss-red-light: #FFF0F0;
+  --color-toss-orange: #F59E0B;
+  --color-toss-orange-light: #FFF8E8;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  color: #191F28;
+  background-color: #F2F4F6;
+}
+
+/* Toss-style number rendering */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hide number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Toss-style selection */
+::selection {
+  background-color: #E8F3FF;
+  color: #3182F6;
+}
+
+/* Toss-style smooth scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #B0B8C1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8B95A1;
+}
+
+/* Toss-style focus */
+*:focus-visible {
+  outline: 2px solid #3182F6;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
 @media print {
   *,
   *::before,

@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Quote } from "./types";
+import type { Quote, Settlement } from "./types";
 
 // Supabase row <-> Quote 변환
 interface QuoteRow {
@@ -15,8 +15,30 @@ interface QuoteRow {
   notes: string;
   status: string;
   settlement: Quote["settlement"] | null;
+  versions: Quote["versions"] | null;
   created_at: string;
   updated_at: string;
+}
+
+function migrateSettlement(s: any): Settlement | undefined {
+  if (!s) return undefined;
+  // 기존 laborPayments+partnerPayments → payments 통합
+  if (s.payments) return s as Settlement;
+  const payments = [
+    ...((s.laborPayments as any[]) || []),
+    ...((s.partnerPayments as any[]) || []),
+  ];
+  const totalPayments = payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+  return {
+    costEntries: s.costEntries || [],
+    payments,
+    totalQuotedAmount: s.totalQuotedAmount || 0,
+    totalMaterialCost: s.totalMaterialCost || 0,
+    totalPayments,
+    finalMargin: s.finalMargin || 0,
+    finalMarginPercent: s.finalMarginPercent || 0,
+    settledAt: s.settledAt || "",
+  };
 }
 
 function rowToQuote(row: QuoteRow): Quote {
@@ -32,7 +54,8 @@ function rowToQuote(row: QuoteRow): Quote {
     totalMargin: row.total_margin,
     notes: row.notes,
     status: row.status as Quote["status"],
-    settlement: row.settlement || undefined,
+    settlement: migrateSettlement(row.settlement),
+    versions: row.versions || undefined,
   };
 }
 
@@ -50,6 +73,7 @@ function quoteToRow(quote: Quote) {
     notes: quote.notes,
     status: quote.status,
     settlement: quote.settlement || null,
+    versions: quote.versions || null,
   };
 }
 

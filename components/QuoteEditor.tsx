@@ -7,8 +7,6 @@ import {
   Trash2,
   Calculator,
   FileDown,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { generateId, formatCurrency } from "@/lib/utils";
 import type { Quote, QuoteItem, CostItem, ClientInfo } from "@/lib/types";
@@ -56,29 +54,23 @@ export function QuoteEditor({
     initialQuote?.notes ||
       "1. 본 견적서는 발행일로부터 14일간 유효합니다.\n2. 부가세(VAT) 별도 금액입니다.",
   );
-  const [showMargin, setShowMargin] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-
-  const toggleExpand = (id: string) => {
-    setExpandedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const [showMargin] = useState(true);
+  // Cost items always visible (no toggle)
 
   const recalcFromCostItems = (item: QuoteItem): QuoteItem => {
-    if (item.costItems.length === 0) return item;
+    if (item.costItems.length === 0) {
+      return { ...item, quantity: 0, unitPrice: 0, laborCost: 0, amount: 0, margin: 0, materialMargin: 0 };
+    }
     const totalMaterialCost = item.costItems.reduce((sum, c) => sum + c.amount, 0);
     const totalMarginSum = item.costItems.reduce((sum, c) => sum + (Number(c.margin) || 0), 0);
     const totalLaborCost = item.costItems.reduce((sum, c) => sum + (Number(c.laborCost) || 0), 0);
-    const unitPrice = Number(item.quantity) > 0
-      ? (totalMaterialCost + totalMarginSum) / Number(item.quantity)
+    const totalQuantity = item.costItems.reduce((sum, c) => sum + (Number(c.quantity) || 0), 0);
+    const unitPrice = totalQuantity > 0
+      ? (totalMaterialCost + totalMarginSum) / totalQuantity
       : 0;
-    const amount = Number(item.quantity) * unitPrice + totalLaborCost;
+    const amount = totalQuantity * unitPrice + totalLaborCost;
     const margin = totalMarginSum + totalLaborCost;
-    return { ...item, unitPrice, laborCost: totalLaborCost, materialMargin: totalMarginSum, margin, amount };
+    return { ...item, quantity: totalQuantity, unitPrice, laborCost: totalLaborCost, materialMargin: totalMarginSum, margin, amount };
   };
 
   const handleItemChange = (id: string, field: keyof QuoteItem, value: any) => {
@@ -86,18 +78,7 @@ export function QuoteEditor({
       items.map((item) => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
-
-          if (updatedItem.costItems.length > 0) {
-            return recalcFromCostItems(updatedItem);
-          }
-
-          updatedItem.margin = 0;
-          updatedItem.materialMargin = 0;
-          updatedItem.amount =
-            Number(updatedItem.quantity) * Number(updatedItem.unitPrice) +
-            Number(updatedItem.laborCost);
-
-          return updatedItem;
+          return recalcFromCostItems(updatedItem);
         }
         return item;
       }),
@@ -315,552 +296,384 @@ export function QuoteEditor({
     onSave(quote);
   };
 
+  // Shared input styles
+  const inp = "px-3 py-2 bg-white border border-toss-border rounded-lg text-[14px] text-toss-text placeholder:text-toss-text-tertiary focus:outline-none focus:border-toss-blue focus:ring-1 focus:ring-toss-blue/20 transition-colors w-full";
+  const costInp = "px-2.5 py-1.5 bg-white border border-toss-border rounded-lg text-[13px] text-toss-text tabular-nums focus:outline-none focus:border-toss-blue focus:ring-1 focus:ring-toss-blue/20 transition-colors w-full";
+  const costInpBlue = "px-2.5 py-1.5 bg-toss-blue-light border border-toss-blue/20 rounded-lg text-[13px] text-toss-blue font-medium tabular-nums focus:outline-none focus:border-toss-blue focus:ring-1 focus:ring-toss-blue/20 transition-colors w-full";
+  const fmt = (n: number) => new Intl.NumberFormat("ko-KR").format(n);
+
+  // Desktop grid: NO | 공정 | 시공명 | 수량 | 공급가 | 시공비 | 중간마진 | 합계 | 삭제
+  const itemGrid = "grid-cols-[32px_120px_1fr_64px_96px_96px_96px_96px_36px]";
+  // Cost sub-grid (indented): 내용 | 수량 | 원가단가 | 중간마진 | 시공비 | 합계 | 삭제
+  const costGrid = "grid-cols-[1fr_64px_96px_96px_96px_96px_36px]";
+
   return (
-    <div className="p-4 md:p-10 max-w-6xl mx-auto pb-28 md:pb-32">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-6 md:mb-8">
-        <div className="flex items-center gap-2 md:gap-4">
-          <button
-            onClick={onCancel}
-            className="p-2 hover:bg-neutral-200 rounded-full transition-colors"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <h2 className="text-xl md:text-2xl font-bold">
-            {initialQuote ? "견적서 수정" : "새 견적서 작성"}
-          </h2>
-        </div>
-        <div className="flex items-center gap-2 md:gap-3">
-          <button
-            onClick={onCancel}
-            className="hidden md:block px-5 py-2.5 rounded-xl font-medium text-neutral-600 hover:bg-neutral-200 transition-colors"
-          >
-            취소
-          </button>
-          <button
-            onClick={handleSave}
-            className="bg-neutral-900 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-xl font-medium hover:bg-neutral-800 transition-colors shadow-sm text-sm md:text-base"
-          >
-            저장하기
-          </button>
+    <div className="min-h-screen bg-toss-bg overflow-y-auto h-full">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-30 bg-white">
+        <div className="px-4 md:px-6 h-12 md:h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button onClick={onCancel} className="p-1 -ml-1 hover:bg-toss-divider rounded-full transition-colors">
+              <ChevronLeft size={22} className="text-toss-text" />
+            </button>
+            <h2 className="text-[17px] md:text-[18px] font-bold text-toss-text">
+              {initialQuote ? "견적서 수정" : "새 견적서"}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrintMargin}
+              className="hidden md:flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-medium text-toss-text-secondary hover:text-toss-text hover:bg-toss-divider rounded-xl transition-colors">
+              <FileDown size={15} /> 원가 PDF
+            </button>
+            <button onClick={handleSave}
+              className="px-5 py-2 bg-toss-blue text-white text-[14px] font-semibold rounded-xl hover:bg-toss-blue-dark active:scale-[0.97] transition-all">
+              저장
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="space-y-6 md:space-y-8">
-        {/* Basic Info */}
-        <section className="bg-white p-4 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
-          <h3 className="text-base md:text-lg font-semibold mb-4 md:mb-6 flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-sm">
-              1
-            </span>
-            기본 정보
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div className="px-4 md:px-6 py-3 md:py-4 pb-28 md:pb-8 space-y-3">
+
+        {/* ── Basic Info ── */}
+        <section className="bg-white rounded-2xl p-4 md:p-5">
+          <h3 className="text-[15px] font-bold text-toss-text mb-3">고객 정보</h3>
+          <div className="hidden md:grid md:grid-cols-4 gap-x-3 gap-y-3">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                견적일자
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                고객명 / 상호명 *
-              </label>
-              <input
-                type="text"
-                value={client.name}
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">고객명 *</label>
+              <input type="text" value={client.name}
                 onChange={(e) => setClient({ ...client, name: e.target.value })}
-                placeholder="홍길동 또는 (주)회사명"
-                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
-              />
+                placeholder="홍길동" className={inp} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                연락처
-              </label>
-              <input
-                type="text"
-                value={client.contact}
-                onChange={(e) =>
-                  setClient({ ...client, contact: e.target.value })
-                }
-                placeholder="010-0000-0000"
-                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
-              />
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">연락처</label>
+              <input type="text" value={client.contact}
+                onChange={(e) => setClient({ ...client, contact: e.target.value })}
+                placeholder="010-0000-0000" className={inp} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                공사 예정일
-              </label>
-              <input
-                type="text"
-                value={client.projectDate}
-                onChange={(e) =>
-                  setClient({ ...client, projectDate: e.target.value })
-                }
-                placeholder="2026년 4월 중순"
-                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
-              />
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">견적일</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                현장 주소
-              </label>
-              <input
-                type="text"
-                value={client.address}
-                onChange={(e) =>
-                  setClient({ ...client, address: e.target.value })
-                }
-                placeholder="서울시 강남구 테헤란로..."
-                className="w-full px-3 md:px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all text-sm"
-              />
+            <div>
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">공사예정일</label>
+              <input type="text" value={client.projectDate}
+                onChange={(e) => setClient({ ...client, projectDate: e.target.value })}
+                placeholder="2026년 4월" className={inp} />
+            </div>
+            <div className="col-span-4">
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">현장주소</label>
+              <input type="text" value={client.address}
+                onChange={(e) => setClient({ ...client, address: e.target.value })}
+                placeholder="서울시 강남구..." className={inp} />
+            </div>
+          </div>
+          <div className="md:hidden grid grid-cols-2 gap-x-2.5 gap-y-2.5">
+            <div className="col-span-2">
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">고객명 *</label>
+              <input type="text" value={client.name}
+                onChange={(e) => setClient({ ...client, name: e.target.value })}
+                placeholder="홍길동" className={inp} />
+            </div>
+            <div>
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">연락처</label>
+              <input type="text" value={client.contact}
+                onChange={(e) => setClient({ ...client, contact: e.target.value })}
+                placeholder="010-0000-0000" className={inp} />
+            </div>
+            <div>
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">견적일</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">공사예정일</label>
+              <input type="text" value={client.projectDate}
+                onChange={(e) => setClient({ ...client, projectDate: e.target.value })}
+                placeholder="2026년 4월" className={inp} />
+            </div>
+            <div>
+              <label className="text-[12px] font-medium text-toss-text-secondary mb-1 block">현장주소</label>
+              <input type="text" value={client.address}
+                onChange={(e) => setClient({ ...client, address: e.target.value })}
+                placeholder="서울시 강남구..." className={inp} />
             </div>
           </div>
         </section>
 
-        {/* Items */}
-        <section className="bg-white p-4 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
-            <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-sm">
-                2
-              </span>
-              상세 내역
-            </h3>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowMargin(!showMargin)}
-                className={`text-xs md:text-sm font-medium px-3 md:px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 ${
-                  showMargin
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                }`}
-              >
-                <Calculator size={14} />
-                {showMargin ? "원가/마진 숨기기" : "원가/마진 입력하기"}
-              </button>
-              <button
-                onClick={handlePrintMargin}
-                className="text-xs md:text-sm font-medium px-3 md:px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-              >
-                <FileDown size={14} />
-                <span className="hidden sm:inline">원가/마진</span> PDF
-              </button>
-            </div>
+        {/* ── Items ── */}
+        <section className="bg-white rounded-2xl p-4 md:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-bold text-toss-text">상세 내역</h3>
+            <button onClick={handlePrintMargin}
+              className="md:hidden flex items-center gap-1 px-2.5 py-1.5 text-[13px] font-medium text-toss-text-secondary hover:bg-toss-divider rounded-lg transition-colors">
+              <FileDown size={14} /> PDF
+            </button>
           </div>
 
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
-              <thead>
-                <tr className="border-b border-neutral-200 text-sm text-neutral-500">
-                  <th className="pb-3 font-medium w-[15%]">공정</th>
-                  <th className="pb-3 font-medium w-[25%]">내용</th>
-                  <th className="pb-3 font-medium w-[8%] text-center">수량</th>
-                  <th className="pb-3 font-medium w-[15%] text-right">단가</th>
-                  <th className="pb-3 font-medium w-[15%] text-right">시공비</th>
-                  {showMargin && (
-                    <th className="pb-3 font-medium w-[10%] text-right text-blue-600">마진</th>
-                  )}
-                  <th className="pb-3 font-medium w-[12%] text-right">금액</th>
-                  <th className="pb-3 font-medium w-[5%]"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {items.map((item) => (
-                  <React.Fragment key={item.id}>
-                    <tr className="group">
-                      <td className="py-3 pr-2 align-top">
-                        <select
-                          value={item.category}
-                          onChange={(e) => handleItemChange(item.id, "category", e.target.value)}
-                          className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900"
-                        >
-                          {CATEGORIES.map((cat) => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-3 px-2 align-top">
-                        <input
-                          type="text"
-                          value={item.description}
-                          onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
-                          placeholder="상세 내용을 입력하세요"
-                          className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900"
-                        />
-                      </td>
-                      <td className="py-3 px-2 align-top">
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.quantity || ""}
-                          onChange={(e) => handleItemChange(item.id, "quantity", Number(e.target.value))}
-                          className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-center"
-                        />
-                      </td>
-                      <td className="py-3 px-2 align-top">
-                        {item.costItems.length > 0 ? (
-                          <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-right text-blue-800 font-medium">
-                            {new Intl.NumberFormat("ko-KR").format(item.unitPrice)}
-                          </div>
-                        ) : (
-                          <input
-                            type="number" min="0" value={item.unitPrice || ""}
-                            onChange={(e) => handleItemChange(item.id, "unitPrice", Number(e.target.value))}
-                            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-right"
-                            placeholder="청구 단가"
-                          />
-                        )}
-                      </td>
-                      <td className="py-3 px-2 align-top">
-                        {item.costItems.length > 0 ? (
-                          <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-right text-blue-800 font-medium">
-                            {new Intl.NumberFormat("ko-KR").format(item.laborCost)}
-                          </div>
-                        ) : (
-                          <input
-                            type="number" min="0" value={item.laborCost || ""}
-                            onChange={(e) => handleItemChange(item.id, "laborCost", Number(e.target.value))}
-                            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 text-right"
-                            placeholder="청구 시공비"
-                          />
-                        )}
-                      </td>
-                      {showMargin && (
-                        <td className="py-3 px-2 text-right font-medium text-blue-600 align-top pt-5">
-                          {new Intl.NumberFormat("ko-KR").format(item.margin)}
-                        </td>
-                      )}
-                      <td className="py-3 px-2 text-right font-medium text-neutral-900 align-top pt-5">
-                        {new Intl.NumberFormat("ko-KR").format(item.amount)}
-                      </td>
-                      <td className="py-3 pl-2 text-right align-top pt-4">
-                        <button
-                          onClick={() => removeItem(item.id)}
-                          disabled={items.length === 1}
-                          className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                    {showMargin && (
-                      <tr>
-                        <td colSpan={8} className="p-0 border-b border-neutral-100 pb-4">
-                          <div className="bg-blue-50/30 p-4 pl-12 border-l-2 border-blue-400 ml-2 rounded-r-lg">
-                            <div className="flex items-center justify-between mb-3">
-                              <h5 className="text-sm font-semibold text-blue-800 flex items-center gap-1.5">
-                                <Calculator size={14} />
-                                자재/기타 원가 및 마진 (단가 산정)
-                              </h5>
-                              <button
-                                onClick={() => addCostItem(item.id)}
-                                className="text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-1"
-                              >
-                                <Plus size={12} />
-                                원가 추가
-                              </button>
-                            </div>
-                            {item.costItems.length > 0 ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-xs text-blue-500 font-medium px-1">
-                                  <span className="w-4"></span>
-                                  <span className="flex-1">내용</span>
-                                  <span className="w-16 text-center">수량</span>
-                                  <span className="w-24 text-right">원가</span>
-                                  <span className="w-24 text-right">마진</span>
-                                  <span className="w-24 text-right">시공비</span>
-                                  <span className="w-24 text-right">합계</span>
-                                  <span className="w-8"></span>
-                                </div>
-                                {item.costItems.map((cItem, cIndex) => (
-                                  <div key={cItem.id} className="flex items-center gap-2">
-                                    <span className="text-xs text-blue-400 w-4 text-center">{cIndex + 1}</span>
-                                    <input type="text" value={cItem.description}
-                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "description", e.target.value)}
-                                      placeholder="원가 내용"
-                                      className="flex-1 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                    />
-                                    <input type="number" min="0" value={cItem.quantity || ""}
-                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "quantity", Number(e.target.value))}
-                                      className="w-16 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-center"
-                                    />
-                                    <input type="number" min="0" value={cItem.unitPrice || ""}
-                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "unitPrice", Number(e.target.value))}
-                                      className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
-                                    />
-                                    <input type="number" value={cItem.margin || ""}
-                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "margin", Number(e.target.value))}
-                                      className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
-                                    />
-                                    <input type="number" min="0" value={cItem.laborCost || ""}
-                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "laborCost", Number(e.target.value))}
-                                      className="w-24 px-3 py-1.5 bg-white border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-right"
-                                    />
-                                    <div className="w-24 text-right text-sm font-medium text-blue-900 px-2">
-                                      {new Intl.NumberFormat("ko-KR").format(cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0))}원
-                                    </div>
-                                    <button onClick={() => removeCostItem(item.id, cItem.id)}
-                                      className="p-1.5 text-blue-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-sm text-blue-500 py-3 text-center bg-white/50 rounded-md border border-blue-100 border-dashed mb-2">
-                                등록된 원가 내역이 없습니다.
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
+          {/* Desktop: Table header */}
+          <div className={`hidden md:grid ${itemGrid} gap-2 items-center px-4 py-2 bg-toss-bg rounded-t-lg border border-toss-border/60 text-[12px] font-bold text-toss-text-secondary`}>
+            <span className="text-center">NO</span>
+            <span>공정</span>
+            <span>시공명</span>
+            <span className="text-center">수량</span>
+            <span className="text-right">공급가</span>
+            <span className="text-right">시공비</span>
+            <span className="text-right text-toss-blue">중간마진</span>
+            <span className="text-right">합계</span>
+            <span></span>
           </div>
 
-          {/* Mobile Card Layout */}
-          <div className="md:hidden space-y-4">
+          <div className="md:space-y-0 space-y-3">
             {items.map((item, idx) => (
-              <div key={item.id} className="border border-neutral-200 rounded-xl overflow-hidden">
-                {/* Card Header */}
-                <div className="bg-neutral-50 p-3 flex items-center justify-between">
-                  <span className="text-sm font-bold text-neutral-500">#{idx + 1}</span>
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    disabled={items.length === 1}
-                    className="p-1.5 text-neutral-400 hover:text-red-600 rounded-md disabled:opacity-30"
-                  >
-                    <Trash2 size={16} />
+              <div key={item.id} className="md:border-x md:border-b border-toss-border/60 md:rounded-none rounded-xl md:last:rounded-b-lg overflow-hidden">
+
+                {/* ─ Desktop Item Row ─ */}
+                <div className={`hidden md:grid ${itemGrid} gap-2 items-center px-4 py-2.5 bg-toss-bg/30 border-b border-toss-border/20`}>
+                  <span className="text-[14px] font-bold text-toss-text-tertiary text-center">{idx + 1}</span>
+                  <select value={item.category}
+                    onChange={(e) => handleItemChange(item.id, "category", e.target.value)}
+                    className={inp}>
+                    {CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
+                  </select>
+                  <input type="text" value={item.description}
+                    onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
+                    placeholder="시공 내용" className={inp} />
+                  <span className="text-[13px] text-toss-text tabular-nums text-center font-medium">{item.quantity}</span>
+                  <span className="text-[13px] text-toss-text tabular-nums text-right font-medium">{fmt(item.unitPrice)}</span>
+                  <span className="text-[13px] text-toss-text tabular-nums text-right font-medium">{fmt(item.laborCost)}</span>
+                  <span className="text-[13px] text-toss-blue tabular-nums text-right font-bold">{fmt(item.margin)}</span>
+                  <span className="text-[14px] text-toss-text tabular-nums text-right font-extrabold">{fmt(item.amount)}</span>
+                  <button onClick={() => removeItem(item.id)} disabled={items.length === 1}
+                    className="p-1 text-toss-text-tertiary hover:text-toss-red rounded-lg transition-colors disabled:opacity-0 justify-self-center">
+                    <Trash2 size={15} />
                   </button>
                 </div>
-                <div className="p-3 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-neutral-500 mb-1 block">공정</label>
-                      <select
-                        value={item.category}
+
+                {/* ─ Mobile Item Row ─ */}
+                <div className="md:hidden bg-toss-bg/50 px-4 py-3 border border-toss-border/60 rounded-t-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[14px] font-bold text-toss-text-tertiary w-6 text-center shrink-0">{idx + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <select value={item.category}
                         onChange={(e) => handleItemChange(item.id, "category", e.target.value)}
-                        className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm"
-                      >
-                        {CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
+                        className={inp}>
+                        {CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
                       </select>
                     </div>
-                    <div>
-                      <label className="text-xs text-neutral-500 mb-1 block">수량</label>
-                      <input
-                        type="number" min="0" value={item.quantity || ""}
-                        onChange={(e) => handleItemChange(item.id, "quantity", Number(e.target.value))}
-                        className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-center"
-                      />
-                    </div>
+                    <button onClick={() => removeItem(item.id)} disabled={items.length === 1}
+                      className="p-1.5 text-toss-text-tertiary hover:text-toss-red rounded-lg transition-colors disabled:opacity-0 shrink-0">
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                  <div>
-                    <label className="text-xs text-neutral-500 mb-1 block">내용</label>
-                    <input
-                      type="text" value={item.description}
+                  <div className="pl-8 mb-2">
+                    <input type="text" value={item.description}
                       onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
-                      placeholder="상세 내용을 입력하세요"
-                      className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm"
-                    />
+                      placeholder="시공 내용" className={inp} />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-4 gap-2 pl-8 text-center">
                     <div>
-                      <label className="text-xs text-neutral-500 mb-1 block">단가</label>
-                      {item.costItems.length > 0 ? (
-                        <div className="px-2.5 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-right text-blue-800 font-medium">
-                          {new Intl.NumberFormat("ko-KR").format(item.unitPrice)}
-                        </div>
-                      ) : (
-                        <input type="number" min="0" value={item.unitPrice || ""}
-                          onChange={(e) => handleItemChange(item.id, "unitPrice", Number(e.target.value))}
-                          placeholder="0"
-                          className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-right"
-                        />
-                      )}
+                      <span className="text-[10px] text-toss-text-tertiary block">수량</span>
+                      <span className="text-[13px] font-medium text-toss-text tabular-nums">{item.quantity}</span>
                     </div>
                     <div>
-                      <label className="text-xs text-neutral-500 mb-1 block">시공비</label>
-                      {item.costItems.length > 0 ? (
-                        <div className="px-2.5 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-right text-blue-800 font-medium">
-                          {new Intl.NumberFormat("ko-KR").format(item.laborCost)}
-                        </div>
-                      ) : (
-                        <input type="number" min="0" value={item.laborCost || ""}
-                          onChange={(e) => handleItemChange(item.id, "laborCost", Number(e.target.value))}
-                          placeholder="0"
-                          className="w-full px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-right"
-                        />
-                      )}
+                      <span className="text-[10px] text-toss-text-tertiary block">공급가</span>
+                      <span className="text-[13px] font-medium text-toss-text tabular-nums">{fmt(item.unitPrice)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-toss-blue block">중간마진</span>
+                      <span className="text-[13px] font-bold text-toss-blue tabular-nums">{fmt(item.margin)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-toss-text-tertiary block">합계</span>
+                      <span className="text-[14px] font-extrabold text-toss-text tabular-nums">{fmt(item.amount)}</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-neutral-100">
-                    <span className="text-sm text-neutral-500">금액</span>
-                    <span className="text-base font-bold">{new Intl.NumberFormat("ko-KR").format(item.amount)}원</span>
-                  </div>
-                  {showMargin && (
-                    <div className="flex items-center justify-between text-blue-600">
-                      <span className="text-sm">마진</span>
-                      <span className="text-sm font-bold">{new Intl.NumberFormat("ko-KR").format(item.margin)}원</span>
-                    </div>
-                  )}
                 </div>
 
-                {/* Mobile Cost Items */}
-                {showMargin && (
-                  <div className="border-t border-blue-200 bg-blue-50/30">
-                    <button
-                      onClick={() => toggleExpand(item.id)}
-                      className="w-full flex items-center justify-between p-3 text-sm font-medium text-blue-800"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <Calculator size={14} />
-                        원가/마진 ({item.costItems.length}건)
-                      </span>
-                      {expandedItems.has(item.id) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
-                    {expandedItems.has(item.id) && (
-                      <div className="px-3 pb-3 space-y-3">
-                        {item.costItems.map((cItem, cIndex) => (
-                          <div key={cItem.id} className="bg-white p-3 rounded-lg border border-blue-100 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-blue-500">원가 #{cIndex + 1}</span>
-                              <button onClick={() => removeCostItem(item.id, cItem.id)}
-                                className="p-1 text-blue-400 hover:text-red-600 rounded"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                            <input type="text" value={cItem.description}
-                              onChange={(e) => handleCostItemChange(item.id, cItem.id, "description", e.target.value)}
-                              placeholder="원가 내용 (예: 석고보드)"
-                              className="w-full px-2.5 py-1.5 bg-blue-50/50 border border-blue-200 rounded-md text-sm"
-                            />
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-xs text-blue-400 block mb-0.5">수량</label>
+                {/* ─ Cost Items (always open) ─ */}
+                <div className="bg-white md:border-b md:border-toss-border/20 md:last:border-b-0">
+                  <div className="px-4 py-2 flex items-center gap-1.5 text-[12px] font-medium text-toss-text-tertiary md:pl-[48px]">
+                    <Calculator size={13} /> 원가 상세 ({item.costItems.length})
+                  </div>
+
+                  <div className="px-4 pb-3 md:pl-[48px]">
+                    {item.costItems.length > 0 ? (
+                      <>
+                        {/* Desktop cost header */}
+                        <div className={`hidden md:grid ${costGrid} gap-2 items-center mb-1 text-[11px] font-medium text-toss-text-tertiary`}>
+                          <span>내용</span>
+                          <span className="text-center">수량</span>
+                          <span className="text-right text-toss-blue">원가단가</span>
+                          <span className="text-right text-toss-blue">중간마진</span>
+                          <span className="text-right text-toss-blue">시공비</span>
+                          <span className="text-right">합계</span>
+                          <span></span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {item.costItems.map((cItem, cIndex) => {
+                            const cTotal = cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0);
+                            return (
+                            <React.Fragment key={cItem.id}>
+                              {/* Desktop Cost Row */}
+                              <div className={`hidden md:grid ${costGrid} gap-2 items-center`}>
+                                <input type="text" value={cItem.description}
+                                  onChange={(e) => handleCostItemChange(item.id, cItem.id, "description", e.target.value)}
+                                  placeholder="원가 내용" className={costInp} />
                                 <input type="number" min="0" value={cItem.quantity || ""}
                                   onChange={(e) => handleCostItemChange(item.id, cItem.id, "quantity", Number(e.target.value))}
-                                  className="w-full px-2.5 py-1.5 bg-white border border-blue-200 rounded-md text-sm text-center"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs text-blue-400 block mb-0.5">원가</label>
+                                  className={`${costInp} text-center`} />
                                 <input type="number" min="0" value={cItem.unitPrice || ""}
                                   onChange={(e) => handleCostItemChange(item.id, cItem.id, "unitPrice", Number(e.target.value))}
-                                  className="w-full px-2.5 py-1.5 bg-white border border-blue-200 rounded-md text-sm text-right"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs text-blue-400 block mb-0.5">마진</label>
+                                  className={`${costInpBlue} text-right`} />
                                 <input type="number" value={cItem.margin || ""}
                                   onChange={(e) => handleCostItemChange(item.id, cItem.id, "margin", Number(e.target.value))}
-                                  className="w-full px-2.5 py-1.5 bg-white border border-blue-200 rounded-md text-sm text-right"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs text-blue-400 block mb-0.5">시공비</label>
+                                  className={`${costInpBlue} text-right`} />
                                 <input type="number" min="0" value={cItem.laborCost || ""}
                                   onChange={(e) => handleCostItemChange(item.id, cItem.id, "laborCost", Number(e.target.value))}
-                                  className="w-full px-2.5 py-1.5 bg-white border border-blue-200 rounded-md text-sm text-right"
-                                />
+                                  className={`${costInpBlue} text-right`} />
+                                <span className="text-[13px] font-bold text-toss-text tabular-nums text-right">
+                                  {fmt(cTotal)}
+                                </span>
+                                <button onClick={() => removeCostItem(item.id, cItem.id)}
+                                  className="p-1 text-toss-text-tertiary hover:text-toss-red rounded-lg transition-colors justify-self-center">
+                                  <Trash2 size={14} />
+                                </button>
                               </div>
-                            </div>
-                            <div className="text-right text-sm font-bold text-blue-900 pt-1 border-t border-blue-100">
-                              합계: {new Intl.NumberFormat("ko-KR").format(cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0))}원
-                            </div>
+
+                              {/* Mobile Cost Row */}
+                              <div className="md:hidden bg-toss-bg/30 border border-toss-border/40 p-3 rounded-xl space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[12px] font-bold text-toss-text-tertiary shrink-0">#{cIndex + 1}</span>
+                                  <input type="text" value={cItem.description}
+                                    onChange={(e) => handleCostItemChange(item.id, cItem.id, "description", e.target.value)}
+                                    placeholder="원가 내용" className={costInp} />
+                                  <button onClick={() => removeCostItem(item.id, cItem.id)}
+                                    className="p-1 text-toss-text-tertiary hover:text-toss-red rounded shrink-0">
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                  <div>
+                                    <label className="text-[11px] font-medium text-toss-text-secondary mb-0.5 block">수량</label>
+                                    <input type="number" min="0" value={cItem.quantity || ""}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "quantity", Number(e.target.value))}
+                                      className={`${costInp} text-center`} />
+                                  </div>
+                                  <div>
+                                    <label className="text-[11px] font-medium text-toss-blue mb-0.5 block">원가</label>
+                                    <input type="number" min="0" value={cItem.unitPrice || ""}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "unitPrice", Number(e.target.value))}
+                                      className={`${costInpBlue} text-right`} />
+                                  </div>
+                                  <div>
+                                    <label className="text-[11px] font-medium text-toss-blue mb-0.5 block">중간마진</label>
+                                    <input type="number" value={cItem.margin || ""}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "margin", Number(e.target.value))}
+                                      className={`${costInpBlue} text-right`} />
+                                  </div>
+                                  <div>
+                                    <label className="text-[11px] font-medium text-toss-blue mb-0.5 block">시공비</label>
+                                    <input type="number" min="0" value={cItem.laborCost || ""}
+                                      onChange={(e) => handleCostItemChange(item.id, cItem.id, "laborCost", Number(e.target.value))}
+                                      className={`${costInpBlue} text-right`} />
+                                  </div>
+                                </div>
+                                <div className="text-right text-[14px] font-bold text-toss-text tabular-nums">
+                                  {fmt(cTotal)}원
+                                </div>
+                              </div>
+                            </React.Fragment>
+                            );
+                          })}
+                        </div>
+
+                        {/* Desktop Subtotal - same cost grid */}
+                        <div className={`hidden md:grid ${costGrid} gap-2 items-center mt-2 pt-2 border-t border-toss-border/40`}>
+                          <span className="text-[12px] font-bold text-toss-text-secondary text-right">소계</span>
+                          <span></span>
+                          <span className="text-[12px] font-bold text-toss-blue tabular-nums text-right">
+                            {fmt(item.costItems.reduce((s, c) => s + c.amount, 0))}
+                          </span>
+                          <span className="text-[12px] font-bold text-toss-blue tabular-nums text-right">
+                            {fmt(item.costItems.reduce((s, c) => s + (Number(c.margin) || 0), 0))}
+                          </span>
+                          <span className="text-[12px] font-bold text-toss-blue tabular-nums text-right">
+                            {fmt(item.costItems.reduce((s, c) => s + (Number(c.laborCost) || 0), 0))}
+                          </span>
+                          <span className="text-[13px] font-extrabold text-toss-text tabular-nums text-right">
+                            {fmt(item.amount)}
+                          </span>
+                          <span></span>
+                        </div>
+
+                        {/* Mobile Subtotal */}
+                        <div className="md:hidden flex items-center justify-between mt-2 pt-2 border-t border-toss-border/40 text-[12px]">
+                          <div className="flex gap-3 tabular-nums">
+                            <span className="text-toss-blue font-medium">원가 {fmt(item.costItems.reduce((s, c) => s + c.amount, 0))}</span>
+                            <span className="text-toss-blue font-medium">중간마진 {fmt(item.costItems.reduce((s, c) => s + (Number(c.margin) || 0), 0))}</span>
+                            <span className="text-toss-blue font-medium">시공 {fmt(item.costItems.reduce((s, c) => s + (Number(c.laborCost) || 0), 0))}</span>
                           </div>
-                        ))}
-                        <button
-                          onClick={() => addCostItem(item.id)}
-                          className="w-full py-2 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg flex items-center justify-center gap-1"
-                        >
-                          <Plus size={12} />
-                          원가 추가
-                        </button>
-                      </div>
+                          <span className="font-extrabold text-toss-text text-[15px] tabular-nums">{fmt(item.amount)}원</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-[13px] text-toss-text-tertiary py-4 text-center">원가 내역을 추가해주세요</div>
                     )}
+
+                    <button onClick={() => addCostItem(item.id)}
+                      className="w-full mt-2 py-2 text-[13px] font-semibold text-toss-text-secondary hover:text-toss-text border border-dashed border-toss-text-tertiary hover:border-toss-text-secondary rounded-lg transition-colors flex items-center justify-center gap-1.5 bg-toss-bg/50 hover:bg-toss-bg">
+                      <Plus size={14} /> 원가 추가
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
 
-          <button
-            onClick={addItem}
-            className="w-full mt-4 py-3 text-sm font-medium text-neutral-600 bg-neutral-50 hover:bg-neutral-100 border border-dashed border-neutral-300 rounded-xl transition-colors flex items-center justify-center gap-2"
-          >
-            <Plus size={16} />
-            항목 추가
+          <button onClick={addItem}
+            className="w-full mt-3 py-2.5 text-[14px] font-medium text-toss-blue hover:bg-toss-blue-light border border-dashed border-toss-blue/40 hover:border-toss-blue rounded-xl transition-colors flex items-center justify-center gap-1.5">
+            <Plus size={16} /> 항목 추가
           </button>
 
           {/* Totals */}
-          <div className="mt-6 md:mt-8 flex flex-col md:flex-row justify-end border-t border-neutral-200 pt-4 md:pt-6 gap-4 md:gap-6">
+          <div className="mt-4 pt-4 border-t-2 border-toss-text/10">
             {showMargin && (
-              <div className="w-full md:w-1/3 space-y-3 bg-blue-50 p-4 md:p-5 rounded-xl border border-blue-100">
-                <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2 text-sm md:text-base">
-                  <Calculator size={16} />
-                  마진 분석
-                </h4>
-                <div className="flex justify-between text-blue-800 text-sm">
-                  <span>총 원가</span>
-                  <span>{formatCurrency(totalCost)}</span>
-                </div>
-                <div className="flex justify-between text-blue-800 font-bold text-sm">
-                  <span>예상 총 마진</span>
-                  <span>{formatCurrency(totalMargin)}</span>
-                </div>
-                <div className="flex justify-between text-blue-800 text-xs md:text-sm pt-2 border-t border-blue-200/50">
-                  <span>마진율 (공급가액 기준)</span>
-                  <span className="font-bold">
-                    {subtotal > 0 ? Math.round((totalMargin / subtotal) * 100) : 0}%
-                  </span>
-                </div>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mb-2 text-[13px] tabular-nums">
+                <span className="text-toss-text-secondary">원가 <b className="text-toss-text">{formatCurrency(totalCost)}</b></span>
+                <span className="text-toss-blue">마진 <b>{formatCurrency(totalMargin)}</b></span>
+                <span className="text-toss-text-secondary">마진율 <b className="text-toss-text">{subtotal > 0 ? Math.round((totalMargin / subtotal) * 100) : 0}%</b></span>
               </div>
             )}
-
-            <div className="w-full md:w-1/3 space-y-3">
-              <div className="flex justify-between text-neutral-600 text-sm">
-                <span>공급가액</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-lg md:text-xl font-bold pt-3 border-t border-neutral-200">
-                <span>총 견적 금액 (VAT 별도)</span>
-                <span>{formatCurrency(total)}</span>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[15px] font-bold text-toss-text">총 견적 금액 <span className="text-[12px] font-normal text-toss-text-tertiary ml-1">VAT별도</span></span>
+              <span className="text-[22px] md:text-[24px] font-extrabold text-toss-text tabular-nums tracking-tight">{formatCurrency(total)}</span>
             </div>
           </div>
         </section>
 
-        {/* Notes */}
-        <section className="bg-white p-4 md:p-8 rounded-2xl border border-neutral-200 shadow-sm">
-          <h3 className="text-base md:text-lg font-semibold mb-4 md:mb-6 flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-sm">
-              3
-            </span>
-            특이사항 및 안내
-          </h3>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={4}
-            className="w-full px-3 md:px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-900 transition-all resize-y text-sm"
-            placeholder="고객에게 전달할 특이사항, 결제 조건, 공사 유의사항 등을 입력하세요."
-          />
+        {/* ── Notes ── */}
+        <section className="bg-white rounded-2xl p-4 md:p-5">
+          <h3 className="text-[15px] font-bold text-toss-text mb-2">특이사항</h3>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+            className="w-full px-3 py-2.5 bg-white border border-toss-border rounded-lg text-[14px] text-toss-text placeholder:text-toss-text-tertiary focus:outline-none focus:border-toss-blue focus:ring-1 focus:ring-toss-blue/20 transition-colors resize-y"
+            placeholder="특이사항을 입력하세요" />
         </section>
+      </div>
+
+      {/* Floating Bottom Bar - Mobile */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-2xl shadow-[0_-1px_12px_rgba(0,0,0,0.06)] md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="min-w-0 flex-1 mr-3">
+            <span className="text-[12px] text-toss-text-tertiary block">총 견적 금액</span>
+            <span className="text-[20px] font-extrabold text-toss-text tabular-nums truncate block">{formatCurrency(total)}</span>
+          </div>
+          <button onClick={handleSave}
+            className="px-6 py-2.5 bg-toss-blue text-white text-[15px] font-semibold rounded-2xl hover:bg-toss-blue-dark active:scale-[0.97] transition-all shrink-0">
+            저장
+          </button>
+        </div>
       </div>
     </div>
   );

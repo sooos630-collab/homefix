@@ -6,6 +6,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { QuoteEditor } from "@/components/QuoteEditor";
 import { QuoteViewer } from "@/components/QuoteViewer";
 import { SettlementPage } from "@/components/SettlementPage";
+import { SettlementList } from "@/components/SettlementList";
 import {
   fetchQuotes,
   upsertQuote,
@@ -13,17 +14,18 @@ import {
   updateQuoteStatus,
   updateQuoteSettlement,
 } from "@/lib/supabase-quotes";
-import type { Quote, QuoteStatus, Settlement } from "@/lib/types";
+import type { Quote, QuoteStatus, QuoteVersion, Settlement } from "@/lib/types";
 
 export default function Home() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<
-    "dashboard" | "editor" | "viewer" | "settlement"
+    "dashboard" | "editor" | "viewer" | "settlement" | "settlements"
   >("dashboard");
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
   const [settlementQuote, setSettlementQuote] = useState<Quote | null>(null);
+  const [editModal, setEditModal] = useState(false);
 
   const loadQuotes = useCallback(async () => {
     setLoading(true);
@@ -43,7 +45,7 @@ export default function Home() {
 
   const handleEdit = (quote: Quote) => {
     setEditingQuote(quote);
-    setCurrentView("editor");
+    setEditModal(true);
   };
 
   const handleView = (quote: Quote) => {
@@ -62,15 +64,44 @@ export default function Home() {
   };
 
   const handleSaveQuote = async (quote: Quote) => {
-    const success = await upsertQuote(quote);
+    let quoteWithVersions = { ...quote };
+
+    // 기존 견적서 수정 시 이전 상태를 버전으로 저장
+    if (editingQuote) {
+      const prev = quotes.find((q) => q.id === quote.id);
+      if (prev) {
+        const existingVersions: QuoteVersion[] = prev.versions || [];
+        const newVersion: QuoteVersion = {
+          version: existingVersions.length + 1,
+          savedAt: new Date().toISOString(),
+          date: prev.date,
+          client: prev.client,
+          items: prev.items,
+          subtotal: prev.subtotal,
+          tax: prev.tax,
+          total: prev.total,
+          totalCost: prev.totalCost,
+          totalMargin: prev.totalMargin,
+          notes: prev.notes,
+        };
+        quoteWithVersions.versions = [...existingVersions, newVersion];
+      }
+    }
+
+    const success = await upsertQuote(quoteWithVersions);
     if (success) {
       if (editingQuote) {
-        setQuotes(quotes.map((q) => (q.id === quote.id ? quote : q)));
+        setQuotes(quotes.map((q) => (q.id === quoteWithVersions.id ? quoteWithVersions : q)));
       } else {
-        setQuotes([quote, ...quotes]);
+        setQuotes([quoteWithVersions, ...quotes]);
       }
-      setViewingQuote(quote);
-      setCurrentView("viewer");
+      setViewingQuote(quoteWithVersions);
+      if (editModal) {
+        setEditModal(false);
+        setEditingQuote(null);
+      } else {
+        setCurrentView("viewer");
+      }
     }
   };
 
@@ -93,20 +124,23 @@ export default function Home() {
     if (!settlementQuote) return;
     const success = await updateQuoteSettlement(settlementQuote.id, settlement);
     if (success) {
+      const updatedQuote = { ...settlementQuote, status: "시공완료" as QuoteStatus, settlement };
       setQuotes(
         quotes.map((q) =>
-          q.id === settlementQuote.id
-            ? { ...q, status: "시공완료" as QuoteStatus, settlement }
-            : q,
+          q.id === settlementQuote.id ? updatedQuote : q,
         ),
       );
+      // 정산 완료 후 견적서 뷰어로 이동하여 정산 결과 확인
+      setViewingQuote(updatedQuote);
+      setCurrentView("viewer");
+    } else {
+      setCurrentView("dashboard");
     }
     setSettlementQuote(null);
-    setCurrentView("dashboard");
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col md:flex-row font-sans text-neutral-900 print:block print:bg-white print:min-h-0">
+    <div className="min-h-screen bg-toss-bg flex flex-col md:flex-row text-toss-text print:block print:bg-white print:min-h-0">
       <Sidebar
         currentView={currentView}
         editingQuote={editingQuote}
@@ -124,7 +158,7 @@ export default function Home() {
             onUpdateStatus={handleUpdateStatus}
           />
         )}
-        {currentView === "editor" && (
+        {currentView === "editor" && !editModal && (
           <QuoteEditor
             initialQuote={editingQuote}
             onSave={handleSaveQuote}
@@ -139,6 +173,23 @@ export default function Home() {
             onBack={() => setCurrentView("dashboard")}
             onEdit={() => handleEdit(viewingQuote)}
             onDelete={() => handleDelete(viewingQuote.id)}
+            onSettlement={() => {
+              setSettlementQuote(viewingQuote);
+              setCurrentView("settlement");
+            }}
+          />
+        )}
+        {currentView === "settlements" && (
+          <SettlementList
+            quotes={quotes}
+            onView={(q) => {
+              setViewingQuote(q);
+              setCurrentView("viewer");
+            }}
+            onSettle={(q) => {
+              setSettlementQuote(q);
+              setCurrentView("settlement");
+            }}
           />
         )}
         {currentView === "settlement" && settlementQuote && (
@@ -152,6 +203,31 @@ export default function Home() {
           />
         )}
       </main>
+
+      {/* 견적서 수정 모달 */}
+      {editModal && editingQuote && (
+        <div className="fixed inset-0 z-[100] print:hidden">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => {
+              if (window.confirm("수정을 취소하시겠습니까?")) {
+                setEditModal(false);
+                setEditingQuote(null);
+              }
+            }}
+          />
+          <div className="absolute inset-2 md:inset-6 lg:inset-x-[10%] lg:inset-y-4 bg-toss-bg rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+            <QuoteEditor
+              initialQuote={editingQuote}
+              onSave={handleSaveQuote}
+              onCancel={() => {
+                setEditModal(false);
+                setEditingQuote(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

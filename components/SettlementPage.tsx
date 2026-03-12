@@ -8,8 +8,6 @@ import {
   Plus,
   Trash2,
   CheckCircle,
-  Package,
-  Users,
 } from "lucide-react";
 import { generateId, formatCurrency } from "@/lib/utils";
 import { loadVendors } from "@/lib/vendors";
@@ -27,13 +25,17 @@ interface SettlementPageProps {
   onCancel: () => void;
 }
 
+interface CostEntryRow {
+  entry: SettlementCostEntry;
+  payments: PaymentEntry[];
+}
+
 interface ItemGroup {
   itemId: string;
   category: string;
   description: string;
   quotedTotal: number;
-  costEntries: SettlementCostEntry[];
-  payments: PaymentEntry[];
+  rows: CostEntryRow[];
 }
 
 export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPageProps) {
@@ -45,28 +47,34 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
 
   const buildInitialGroups = (): ItemGroup[] => {
     return quote.items.map((item) => {
-      const costEntries: SettlementCostEntry[] =
+      const rows: CostEntryRow[] =
         item.costItems.length > 0
           ? item.costItems.map((cItem) => ({
-              id: generateId(),
-              parentItemId: item.id,
-              costItemId: cItem.id,
-              vendorId: "",
-              category: item.category,
-              description: cItem.description,
-              quotedAmount: cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0),
-              materialCost: 0,
+              entry: {
+                id: generateId(),
+                parentItemId: item.id,
+                costItemId: cItem.id,
+                vendorId: "",
+                category: item.category,
+                description: cItem.description,
+                quotedAmount: cItem.amount + (Number(cItem.margin) || 0) + (Number(cItem.laborCost) || 0),
+                materialCost: 0,
+              },
+              payments: [],
             }))
           : [
               {
-                id: generateId(),
-                parentItemId: item.id,
-                costItemId: "",
-                vendorId: "",
-                category: item.category,
-                description: item.description,
-                quotedAmount: item.amount,
-                materialCost: 0,
+                entry: {
+                  id: generateId(),
+                  parentItemId: item.id,
+                  costItemId: "",
+                  vendorId: "",
+                  category: item.category,
+                  description: item.description,
+                  quotedAmount: item.amount,
+                  materialCost: 0,
+                },
+                payments: [],
               },
             ];
 
@@ -75,8 +83,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
         category: item.category,
         description: item.description,
         quotedTotal: item.amount,
-        costEntries,
-        payments: [],
+        rows,
       };
     });
   };
@@ -95,14 +102,15 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
     });
   };
 
-  const handleCostChange = (itemId: string, entryId: string, value: number) => {
+  // 실자재구매 변경
+  const handleMaterialChange = (itemId: string, entryId: string, value: number) => {
     setGroups((prev) =>
       prev.map((g) =>
         g.itemId === itemId
           ? {
               ...g,
-              costEntries: g.costEntries.map((e) =>
-                e.id === entryId ? { ...e, materialCost: value } : e,
+              rows: g.rows.map((r) =>
+                r.entry.id === entryId ? { ...r, entry: { ...r.entry, materialCost: value } } : r,
               ),
             }
           : g,
@@ -110,70 +118,87 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
     );
   };
 
-  const handleCostVendorSelect = (
-    itemId: string,
-    entryId: string,
-    vendorId: string,
-  ) => {
+  // 거래처 지급 추가
+  const addPayment = (itemId: string, entryId: string) => {
     setGroups((prev) =>
-      prev.map((group) =>
-        group.itemId === itemId
+      prev.map((g) =>
+        g.itemId === itemId
           ? {
-              ...group,
-              costEntries: group.costEntries.map((entry) =>
-                entry.id === entryId ? { ...entry, vendorId } : entry,
+              ...g,
+              rows: g.rows.map((r) =>
+                r.entry.id === entryId
+                  ? {
+                      ...r,
+                      payments: [
+                        ...r.payments,
+                        { id: generateId(), parentItemId: itemId, vendorId: "", name: "", amount: 0 },
+                      ],
+                    }
+                  : r,
               ),
             }
-          : group,
+          : g,
       ),
     );
   };
 
-  const addPayment = (itemId: string) => {
+  // 거래처 지급 삭제
+  const removePayment = (itemId: string, entryId: string, paymentId: string) => {
     setGroups((prev) =>
       prev.map((g) =>
         g.itemId === itemId
           ? {
               ...g,
-              payments: [
-                ...g.payments,
-                {
-                  id: generateId(),
-                  parentItemId: itemId,
-                  vendorId: "",
-                  name: "",
-                  amount: 0,
-                },
-              ],
+              rows: g.rows.map((r) =>
+                r.entry.id === entryId
+                  ? { ...r, payments: r.payments.filter((p) => p.id !== paymentId) }
+                  : r,
+              ),
             }
           : g,
       ),
     );
   };
 
-  const removePayment = (itemId: string, paymentId: string) => {
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.itemId === itemId
-          ? { ...g, payments: g.payments.filter((p) => p.id !== paymentId) }
-          : g,
-      ),
-    );
-  };
-
-  const updatePayment = (
-    itemId: string,
-    paymentId: string,
-    field: "name" | "amount" | "vendorId",
-    value: string | number,
-  ) => {
+  // 거래처 지급 업데이트
+  const updatePaymentVendor = (itemId: string, entryId: string, paymentId: string, vendorId: string) => {
+    const v = vendors.find((vendor) => vendor.id === vendorId);
     setGroups((prev) =>
       prev.map((g) =>
         g.itemId === itemId
           ? {
               ...g,
-              payments: g.payments.map((p) =>
-                p.id === paymentId ? { ...p, [field]: value } : p,
+              rows: g.rows.map((r) =>
+                r.entry.id === entryId
+                  ? {
+                      ...r,
+                      payments: r.payments.map((p) =>
+                        p.id === paymentId ? { ...p, vendorId, name: v?.name || p.name } : p,
+                      ),
+                    }
+                  : r,
+              ),
+            }
+          : g,
+      ),
+    );
+  };
+
+  const updatePaymentAmount = (itemId: string, entryId: string, paymentId: string, amount: number) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.itemId === itemId
+          ? {
+              ...g,
+              rows: g.rows.map((r) =>
+                r.entry.id === entryId
+                  ? {
+                      ...r,
+                      payments: r.payments.map((p) =>
+                        p.id === paymentId ? { ...p, amount } : p,
+                      ),
+                    }
+                  : r,
               ),
             }
           : g,
@@ -186,68 +211,34 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
       vendors.map((vendor) => ({
         id: vendor.id,
         name: vendor.name,
-        label: `${vendor.name} · ${
-          vendor.vendorType === "partner" ? "시공/인건비" : "매입/구매"
-        }`,
+        label: `${vendor.name} · ${vendor.vendorType === "partner" ? "시공/인건비" : "매입/구매"}`,
       })),
     [vendors],
   );
-  const purchaseVendorOptions = useMemo(
-    () => vendorOptions.filter((vendor) => vendors.find((item) => item.id === vendor.id)?.vendorType === "purchase"),
-    [vendorOptions, vendors],
-  );
-  const partnerVendorOptions = useMemo(
-    () => vendorOptions.filter((vendor) => vendors.find((item) => item.id === vendor.id)?.vendorType === "partner"),
-    [vendorOptions, vendors],
-  );
-
-  const handleVendorSelect = (
-    itemId: string,
-    paymentId: string,
-    vendorId: string,
-  ) => {
-    const selectedVendor = vendors.find((vendor) => vendor.id === vendorId);
-
-    setGroups((prev) =>
-      prev.map((group) =>
-        group.itemId === itemId
-          ? {
-              ...group,
-              payments: group.payments.map((payment) =>
-                payment.id === paymentId
-                  ? {
-                      ...payment,
-                      vendorId,
-                      name: selectedVendor?.name || payment.name,
-                    }
-                  : payment,
-              ),
-            }
-          : group,
-      ),
-    );
-  };
 
   // Totals
-  const allCostEntries = groups.flatMap((g) => g.costEntries);
-  const allPayments = groups.flatMap((g) => g.payments);
+  const allRows = groups.flatMap((g) => g.rows);
   const totalQuotedAmount = quote.total;
-  const totalMaterialCost = allCostEntries.reduce((sum, e) => sum + (Number(e.materialCost) || 0), 0);
-  const totalPayments = allPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalMaterialCost = allRows.reduce((sum, r) => sum + (Number(r.entry.materialCost) || 0), 0);
+  const totalPayments = allRows.reduce(
+    (sum, r) => sum + r.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0),
+    0,
+  );
   const finalMargin = totalQuotedAmount - totalMaterialCost - totalPayments;
   const finalMarginPercent = totalQuotedAmount > 0 ? Math.round((finalMargin / totalQuotedAmount) * 100) : 0;
 
-  const isMaterialValid = allCostEntries.every((e) => Number(e.materialCost) > 0);
-  const isAllValid = isMaterialValid;
+  const isAllValid = allRows.every((r) => Number(r.entry.materialCost) > 0);
 
   const handleConfirm = () => {
     if (!isAllValid) {
-      alert("모든 항목의 실구매비용을 입력해주세요.");
+      alert("모든 항목의 실자재구매 비용을 입력해주세요.");
       return;
     }
     const settlement: Settlement = {
-      costEntries: allCostEntries,
-      payments: allPayments.filter((p) => p.name.trim() && p.amount > 0),
+      costEntries: allRows.map((r) => r.entry),
+      payments: allRows
+        .flatMap((r) => r.payments)
+        .filter((p) => p.name.trim() && p.amount > 0),
       totalQuotedAmount,
       totalMaterialCost,
       totalPayments,
@@ -296,15 +287,18 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
         {/* Item Groups */}
         {groups.map((group, groupIdx) => {
           const isExpanded = expandedItems.has(group.itemId);
-          const groupMaterial = group.costEntries.reduce((s, e) => s + (Number(e.materialCost) || 0), 0);
-          const groupPayments = group.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-          const groupQuoted = group.costEntries.reduce((s, e) => s + e.quotedAmount, 0);
-          const groupDiff = groupQuoted - groupMaterial;
-          const groupCostValid = group.costEntries.every((e) => Number(e.materialCost) > 0);
+          const groupMaterial = group.rows.reduce((s, r) => s + (Number(r.entry.materialCost) || 0), 0);
+          const groupVendorPay = group.rows.reduce(
+            (s, r) => s + r.payments.reduce((s2, p) => s2 + (Number(p.amount) || 0), 0),
+            0,
+          );
+          const groupQuoted = group.rows.reduce((s, r) => s + r.entry.quotedAmount, 0);
+          const groupProfit = groupQuoted - groupMaterial - groupVendorPay;
+          const groupValid = group.rows.every((r) => Number(r.entry.materialCost) > 0);
 
           return (
             <section key={group.itemId} className="bg-white rounded-2xl overflow-hidden">
-              {/* Card Header - clickable */}
+              {/* Card Header */}
               <button
                 onClick={() => toggleExpand(group.itemId)}
                 className="w-full px-4 md:px-5 py-3 md:py-4 flex items-center gap-3 hover:bg-toss-bg/30 transition-colors"
@@ -319,7 +313,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
                   {group.description}
                 </span>
                 <div className="flex items-center gap-2 shrink-0">
-                  {groupCostValid ? (
+                  {groupValid ? (
                     <span className="text-[10px] font-bold bg-toss-green-light text-toss-green px-1.5 py-0.5 rounded-full hidden md:inline">완료</span>
                   ) : (
                     <span className="text-[10px] font-bold bg-toss-red-light text-toss-red px-1.5 py-0.5 rounded-full hidden md:inline">미입력</span>
@@ -330,214 +324,171 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
               </button>
 
               {isExpanded && (
-                <div className="px-4 md:px-5 pb-4 md:pb-5 space-y-3">
-                  {/* Cost Entries */}
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Package size={13} className="text-toss-text-tertiary" />
-                      <span className="text-[12px] font-bold text-toss-text-secondary">실제원가</span>
-                    </div>
-
-                    {/* Desktop table */}
-                    <div className="hidden md:block">
-                      <div className="flex items-center gap-3 text-[11px] text-toss-text-tertiary font-medium px-1 pb-1.5">
-                        <span className="flex-1">세부항목</span>
-                        <span className="w-36">매입 거래처</span>
-                        <span className="w-24 text-right">견적금액</span>
-                        <span className="w-32 text-right">실구매비용</span>
-                        <span className="w-20 text-right">차액</span>
-                      </div>
-                      {group.costEntries.map((entry) => {
-                        const diff = entry.quotedAmount - (Number(entry.materialCost) || 0);
-                        return (
-                          <div key={entry.id} className="flex items-center gap-3 py-1">
-                            <span className="flex-1 text-[13px] text-toss-text truncate">{entry.description}</span>
-                            <select
-                              value={entry.vendorId}
-                              onChange={(e) =>
-                                handleCostVendorSelect(group.itemId, entry.id, e.target.value)
-                              }
-                              className="w-36 px-3 py-1.5 bg-white border border-toss-border rounded-lg text-[12px] text-toss-text focus:outline-none focus:border-toss-blue transition-colors"
-                            >
-                              <option value="">거래처 연결</option>
-                              {purchaseVendorOptions.map((vendor) => (
-                                <option key={vendor.id} value={vendor.id}>
-                                  {vendor.name}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="w-24 text-right text-[12px] text-toss-text-tertiary tabular-nums">
-                              {fmt(entry.quotedAmount)}
-                            </span>
-                            <div className="w-32">
-                              <input
-                                type="number"
-                                min="0"
-                                value={entry.materialCost || ""}
-                                onChange={(e) => handleCostChange(group.itemId, entry.id, Number(e.target.value))}
-                                placeholder="실비용"
-                                className="w-full px-3 py-1.5 bg-toss-input rounded-lg text-[13px] text-right text-toss-text tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:bg-toss-divider transition-colors"
-                              />
-                            </div>
-                            <span
-                              className={`w-20 text-right text-[12px] font-semibold tabular-nums ${
-                                Number(entry.materialCost) > 0
-                                  ? diff >= 0
-                                    ? "text-toss-green"
-                                    : "text-toss-red"
-                                  : "text-toss-text-tertiary"
-                              }`}
-                            >
-                              {Number(entry.materialCost) > 0 ? (diff >= 0 ? "+" : "") + fmt(diff) : "-"}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Mobile */}
-                    <div className="md:hidden space-y-1.5">
-                      {group.costEntries.map((entry) => (
-                        <div key={entry.id} className="bg-toss-bg/50 rounded-xl p-3 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[13px] font-medium text-toss-text">{entry.description}</span>
-                            <span className="text-[11px] text-toss-text-tertiary tabular-nums">견적 {fmt(entry.quotedAmount)}</span>
-                          </div>
-                          <select
-                            value={entry.vendorId}
-                            onChange={(e) =>
-                              handleCostVendorSelect(group.itemId, entry.id, e.target.value)
-                            }
-                            className="w-full px-3 py-2 bg-white border border-toss-border rounded-xl text-[12px] text-toss-text focus:outline-none focus:border-toss-blue transition-colors"
-                          >
-                            <option value="">매입 거래처 연결</option>
-                            {purchaseVendorOptions.map((vendor) => (
-                              <option key={vendor.id} value={vendor.id}>
-                                {vendor.name}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            min="0"
-                            value={entry.materialCost || ""}
-                            onChange={(e) => handleCostChange(group.itemId, entry.id, Number(e.target.value))}
-                            placeholder="실구매 비용 입력"
-                            className="w-full px-3 py-2 bg-toss-input rounded-xl text-[13px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:bg-toss-divider transition-colors"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                <div className="px-4 md:px-5 pb-4 md:pb-5">
+                  {/* Desktop: 테이블 헤더 */}
+                  <div className="hidden md:flex items-center gap-2 text-[11px] text-toss-text-tertiary font-medium px-1 pb-2 border-b border-toss-border/30">
+                    <span className="w-[18%] min-w-0">세부항목</span>
+                    <span className="w-[10%] text-right">견적금액</span>
+                    <span className="flex-1">거래처 지급</span>
+                    <span className="w-[14%]">실자재구매</span>
+                    <span className="w-[10%] text-right">순수익</span>
                   </div>
 
-                  {/* Payments for this item */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <Users size={13} className="text-toss-text-tertiary" />
-                        <span className="text-[12px] font-bold text-toss-text-secondary">지급내역</span>
-                        {group.payments.length > 0 && (
-                          <span className="text-[11px] text-toss-text-tertiary tabular-nums">
-                            ({fmt(groupPayments)}원)
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => addPayment(group.itemId)}
-                        className="text-[12px] font-medium text-toss-blue hover:text-toss-blue-dark px-2 py-1 rounded-lg flex items-center gap-0.5 transition-colors"
-                      >
-                        <Plus size={13} /> 추가
-                      </button>
-                    </div>
+                  {/* Rows */}
+                  {group.rows.map((row) => {
+                    const rowVendorPay = row.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+                    const rowMaterial = Number(row.entry.materialCost) || 0;
+                    const rowProfit = row.entry.quotedAmount - rowVendorPay - rowMaterial;
 
-                    {group.payments.length === 0 ? (
-                      <button
-                        onClick={() => addPayment(group.itemId)}
-                        className="w-full py-3 border-2 border-dashed border-toss-border/50 rounded-xl text-[12px] text-toss-text-tertiary hover:border-toss-blue/30 hover:text-toss-blue transition-colors"
-                      >
-                        + 지급 대상 추가 (인건비/협력사)
-                      </button>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {group.payments.map((payment, pIdx) => (
-                          <div key={payment.id} className="flex items-center gap-2">
-                            <span className="text-[11px] text-toss-text-tertiary w-4 text-center shrink-0 tabular-nums">
-                              {pIdx + 1}
-                            </span>
-                            <input
-                              type="text"
-                              value={payment.name}
-                              onChange={(e) =>
-                                setGroups((prev) =>
-                                  prev.map((currentGroup) =>
-                                    currentGroup.itemId === group.itemId
-                                      ? {
-                                          ...currentGroup,
-                                          payments: currentGroup.payments.map((currentPayment) =>
-                                            currentPayment.id === payment.id
-                                              ? {
-                                                  ...currentPayment,
-                                                  vendorId: "",
-                                                  name: e.target.value,
-                                                }
-                                              : currentPayment,
-                                          ),
-                                        }
-                                      : currentGroup,
-                                  ),
-                                )
-                              }
-                              placeholder="지급 대상 (이름/업체명)"
-                              className="flex-1 px-3 py-1.5 bg-toss-input rounded-lg text-[13px] placeholder:text-toss-text-tertiary focus:outline-none focus:bg-toss-divider transition-colors"
-                            />
-                            <select
-                              value={payment.vendorId}
-                              onChange={(e) =>
-                                handleVendorSelect(group.itemId, payment.id, e.target.value)
-                              }
-                              className="w-36 md:w-44 px-3 py-1.5 bg-white border border-toss-border rounded-lg text-[12px] text-toss-text focus:outline-none focus:border-toss-blue transition-colors"
+                    return (
+                      <div key={row.entry.id}>
+                        {/* Desktop Row */}
+                        <div className="hidden md:flex items-start gap-2 py-2 border-b border-toss-border/20">
+                          {/* 세부항목 */}
+                          <span className="w-[18%] min-w-0 text-[13px] font-medium text-toss-text truncate pt-1.5">
+                            {row.entry.description}
+                          </span>
+                          {/* 견적금액 */}
+                          <span className="w-[10%] text-right text-[12px] text-toss-text-tertiary tabular-nums pt-1.5">
+                            {fmt(row.entry.quotedAmount)}
+                          </span>
+                          {/* 거래처 지급 */}
+                          <div className="flex-1 space-y-1">
+                            {row.payments.map((payment) => (
+                              <div key={payment.id} className="flex items-center gap-1">
+                                <select
+                                  value={payment.vendorId}
+                                  onChange={(e) => updatePaymentVendor(group.itemId, row.entry.id, payment.id, e.target.value)}
+                                  className="flex-1 min-w-0 px-2 py-1 bg-white border border-toss-border rounded-lg text-[11px] text-toss-text focus:outline-none focus:border-toss-blue transition-colors"
+                                >
+                                  <option value="">거래처</option>
+                                  {vendorOptions.map((v) => (
+                                    <option key={v.id} value={v.id}>{v.name}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={payment.amount || ""}
+                                  onChange={(e) => updatePaymentAmount(group.itemId, row.entry.id, payment.id, Number(e.target.value))}
+                                  placeholder="금액"
+                                  className="w-24 px-2 py-1 bg-toss-input rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:bg-toss-divider transition-colors"
+                                />
+                                <button
+                                  onClick={() => removePayment(group.itemId, row.entry.id, payment.id)}
+                                  className="p-0.5 text-toss-text-tertiary hover:text-toss-red transition-colors shrink-0"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              onClick={() => addPayment(group.itemId, row.entry.id)}
+                              className="text-[10px] font-medium text-toss-blue hover:text-toss-blue-dark flex items-center gap-0.5 px-1"
                             >
-                              <option value="">거래처 연결</option>
-                              {partnerVendorOptions.map((vendor) => (
-                                <option key={vendor.id} value={vendor.id}>
-                                  {vendor.label}
-                                </option>
-                              ))}
-                            </select>
+                              <Plus size={10} /> 거래처
+                            </button>
+                          </div>
+                          {/* 실자재구매 */}
+                          <div className="w-[14%]">
                             <input
                               type="number"
                               min="0"
-                              value={payment.amount || ""}
-                              onChange={(e) => updatePayment(group.itemId, payment.id, "amount", Number(e.target.value))}
-                              placeholder="금액"
-                              className="w-24 md:w-32 px-3 py-1.5 bg-toss-input rounded-lg text-[13px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:bg-toss-divider transition-colors"
+                              value={row.entry.materialCost || ""}
+                              onChange={(e) => handleMaterialChange(group.itemId, row.entry.id, Number(e.target.value))}
+                              placeholder="자재비"
+                              className="w-full px-2 py-1 bg-toss-input rounded-lg text-[12px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:bg-toss-divider transition-colors"
                             />
-                            <button
-                              onClick={() => removePayment(group.itemId, payment.id)}
-                              className="p-1 text-toss-text-tertiary hover:text-toss-red rounded-lg transition-colors shrink-0"
-                            >
-                              <Trash2 size={13} />
-                            </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          {/* 순수익 */}
+                          <span
+                            className={`w-[10%] text-right text-[12px] font-bold tabular-nums pt-1.5 ${
+                              rowMaterial > 0
+                                ? rowProfit >= 0 ? "text-toss-green" : "text-toss-red"
+                                : "text-toss-text-tertiary"
+                            }`}
+                          >
+                            {rowMaterial > 0 ? (rowProfit >= 0 ? "+" : "") + fmt(rowProfit) : "-"}
+                          </span>
+                        </div>
 
-                  {/* Item Subtotal */}
-                  <div className="bg-toss-bg rounded-xl px-3 py-2.5 flex items-center justify-between text-[12px]">
+                        {/* Mobile Row (compact) */}
+                        <div className="md:hidden bg-toss-bg/40 rounded-xl p-3 mb-1.5 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[13px] font-semibold text-toss-text">{row.entry.description}</span>
+                            <span className="text-[11px] text-toss-text-tertiary tabular-nums">견적 {fmt(row.entry.quotedAmount)}</span>
+                          </div>
+                          {/* 거래처 지급 */}
+                          {row.payments.map((payment) => (
+                            <div key={payment.id} className="flex items-center gap-1.5">
+                              <select
+                                value={payment.vendorId}
+                                onChange={(e) => updatePaymentVendor(group.itemId, row.entry.id, payment.id, e.target.value)}
+                                className="flex-1 min-w-0 px-2 py-1.5 bg-white border border-toss-border rounded-lg text-[11px] focus:outline-none focus:border-toss-blue"
+                              >
+                                <option value="">거래처</option>
+                                {vendorOptions.map((v) => (
+                                  <option key={v.id} value={v.id}>{v.name}</option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                min="0"
+                                value={payment.amount || ""}
+                                onChange={(e) => updatePaymentAmount(group.itemId, row.entry.id, payment.id, Number(e.target.value))}
+                                placeholder="금액"
+                                className="w-24 px-2 py-1.5 bg-toss-input rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none"
+                              />
+                              <button onClick={() => removePayment(group.itemId, row.entry.id, payment.id)} className="p-0.5 text-toss-text-tertiary hover:text-toss-red shrink-0">
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => addPayment(group.itemId, row.entry.id)}
+                            className="text-[10px] font-medium text-toss-blue flex items-center gap-0.5"
+                          >
+                            <Plus size={10} /> 거래처
+                          </button>
+                          {/* 자재 + 순수익 한줄 */}
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.entry.materialCost || ""}
+                              onChange={(e) => handleMaterialChange(group.itemId, row.entry.id, Number(e.target.value))}
+                              placeholder="실자재구매"
+                              className="flex-1 px-2 py-1.5 bg-toss-input rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none"
+                            />
+                            <span
+                              className={`text-[12px] font-bold tabular-nums shrink-0 w-20 text-right ${
+                                rowMaterial > 0
+                                  ? rowProfit >= 0 ? "text-toss-green" : "text-toss-red"
+                                  : "text-toss-text-tertiary"
+                              }`}
+                            >
+                              {rowMaterial > 0 ? (rowProfit >= 0 ? "+" : "") + fmt(rowProfit) : "-"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Group Subtotal */}
+                  <div className="bg-toss-bg rounded-xl px-3 py-2.5 flex items-center justify-between text-[12px] mt-2">
                     <span className="font-semibold text-toss-text-secondary">소계</span>
-                    <div className="flex items-center gap-4 tabular-nums">
-                      <span className="text-toss-text-tertiary">
-                        실비 <span className="font-bold text-toss-text">{fmt(groupMaterial)}</span>
-                      </span>
-                      {groupPayments > 0 && (
+                    <div className="flex items-center gap-3 tabular-nums">
+                      {groupVendorPay > 0 && (
                         <span className="text-toss-text-tertiary">
-                          지급 <span className="font-bold text-toss-text">{fmt(groupPayments)}</span>
+                          거래처 <span className="font-bold text-toss-text">{fmt(groupVendorPay)}</span>
                         </span>
                       )}
-                      <span className={`font-bold ${groupDiff >= 0 ? "text-toss-green" : "text-toss-red"}`}>
-                        {groupDiff >= 0 ? "+" : ""}{fmt(groupDiff)}
+                      <span className="text-toss-text-tertiary">
+                        자재 <span className="font-bold text-toss-text">{fmt(groupMaterial)}</span>
+                      </span>
+                      <span className={`font-bold ${groupProfit >= 0 ? "text-toss-green" : "text-toss-red"}`}>
+                        {groupProfit >= 0 ? "+" : ""}{fmt(groupProfit)}
                       </span>
                     </div>
                   </div>
@@ -557,12 +508,12 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
             </div>
             <div className="h-px bg-white/10" />
             <div className="flex justify-between">
-              <span className="text-white/60">실제원가 합계</span>
-              <span className="font-medium text-orange-300 tabular-nums">- {formatCurrency(totalMaterialCost)}</span>
+              <span className="text-white/60">거래처 지급 합계</span>
+              <span className="font-medium text-orange-300 tabular-nums">- {formatCurrency(totalPayments)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-white/60">지급내역 합계</span>
-              <span className="font-medium text-orange-300 tabular-nums">- {formatCurrency(totalPayments)}</span>
+              <span className="text-white/60">실자재구매 합계</span>
+              <span className="font-medium text-orange-300 tabular-nums">- {formatCurrency(totalMaterialCost)}</span>
             </div>
             <div className="h-px bg-white/20 mt-2" />
             <div className="flex justify-between items-baseline pt-2">
@@ -593,10 +544,13 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
             <p className="font-bold mb-1">입력이 필요한 항목이 있습니다</p>
             <ul className="space-y-0.5">
               {groups
-                .filter((g) => !g.costEntries.every((e) => Number(e.materialCost) > 0))
-                .map((g) => (
-                  <li key={g.itemId}>· [{g.category}] {g.description} — 실구매비용 미입력</li>
-                ))}
+                .flatMap((g) =>
+                  g.rows
+                    .filter((r) => !(Number(r.entry.materialCost) > 0))
+                    .map((r) => (
+                      <li key={r.entry.id}>· [{g.category}] {r.entry.description} — 실자재구매 미입력</li>
+                    )),
+                )}
             </ul>
           </div>
         )}

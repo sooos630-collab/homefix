@@ -1,13 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   Calculator,
   Search,
   ChevronRight,
-  TrendingUp,
-  TrendingDown,
-  Package,
   Users,
   ArrowRight,
   Calendar,
@@ -15,14 +12,11 @@ import {
   Columns3,
   Clock,
   CheckCircle2,
-  BarChart3,
-  PieChart,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Quote } from "@/lib/types";
 
 type SettlementStatus = "계약" | "정산완료";
-type TabMode = "dashboard" | "projects";
 
 interface SettlementListProps {
   quotes: Quote[];
@@ -37,7 +31,6 @@ export function SettlementList({ quotes, onView, onSettle }: SettlementListProps
   const [viewMode, setViewMode] = useState<"monthly" | "all">("all");
   const [displayMode, setDisplayMode] = useState<"list" | "kanban">("list");
   const [kanbanTab, setKanbanTab] = useState<SettlementStatus>("계약");
-  const [tabMode, setTabMode] = useState<TabMode>("dashboard");
 
   const years = Array.from({ length: 7 }, (_, i) => 2024 + i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -71,76 +64,10 @@ export function SettlementList({ quotes, onView, onSettle }: SettlementListProps
 
   const pendingProjects = filteredProjects.filter((q) => q.status === "계약");
   const settledProjects = filteredProjects.filter((q) => q.status === "시공완료" && q.settlement);
-
-  // 통계
-  const totalRevenue = settledProjects.reduce((s, q) => s + (q.settlement?.totalQuotedAmount || 0), 0);
-  const totalMaterial = settledProjects.reduce((s, q) => s + (q.settlement?.totalMaterialCost || 0), 0);
-  const totalPayments = settledProjects.reduce((s, q) => s + (q.settlement?.totalPayments || 0), 0);
-  const totalMargin = settledProjects.reduce((s, q) => s + (q.settlement?.finalMargin || 0), 0);
-  const avgMarginPercent = totalRevenue > 0 ? Math.round((totalMargin / totalRevenue) * 100) : 0;
   const pendingTotal = pendingProjects.reduce((s, q) => s + q.total, 0);
-  const totalCostSum = totalMaterial + totalPayments;
+  const totalRevenue = settledProjects.reduce((s, q) => s + (q.settlement?.totalQuotedAmount || 0), 0);
 
   const fmt = (n: number) => new Intl.NumberFormat("ko-KR").format(n);
-
-  // 월별 집계 (차트용)
-  const monthlyData = useMemo(() => {
-    const settled = quotes.filter((q) => q.status === "시공완료" && q.settlement);
-    const map = new Map<string, { revenue: number; material: number; payments: number; margin: number; count: number }>();
-
-    for (const q of settled) {
-      const s = q.settlement!;
-      const d = new Date(s.settledAt);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const existing = map.get(key) || { revenue: 0, material: 0, payments: 0, margin: 0, count: 0 };
-      map.set(key, {
-        revenue: existing.revenue + s.totalQuotedAmount,
-        material: existing.material + s.totalMaterialCost,
-        payments: existing.payments + s.totalPayments,
-        margin: existing.margin + s.finalMargin,
-        count: existing.count + 1,
-      });
-    }
-
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-6)
-      .map(([key, val]) => ({
-        label: key.split("-")[1] + "월",
-        ...val,
-      }));
-  }, [quotes]);
-
-  // 공정별 집계 (정산완료 프로젝트의 costEntries 기반)
-  const categoryData = useMemo(() => {
-    const map = new Map<string, { quoted: number; actual: number }>();
-    for (const q of settledProjects) {
-      const s = q.settlement!;
-      for (const entry of s.costEntries) {
-        const existing = map.get(entry.category) || { quoted: 0, actual: 0 };
-        map.set(entry.category, {
-          quoted: existing.quoted + entry.quotedAmount,
-          actual: existing.actual + entry.materialCost,
-        });
-      }
-    }
-    return Array.from(map.entries())
-      .map(([category, val]) => ({ category, ...val, diff: val.quoted - val.actual }))
-      .sort((a, b) => b.actual - a.actual);
-  }, [settledProjects]);
-
-  // 프로젝트별 마진 비교 (정산완료)
-  const projectMarginData = useMemo(() => {
-    return settledProjects
-      .map((q) => ({
-        name: q.client.name,
-        revenue: q.settlement!.totalQuotedAmount,
-        margin: q.settlement!.finalMargin,
-        marginPct: q.settlement!.finalMarginPercent,
-      }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 8);
-  }, [settledProjects]);
 
   // 카드 렌더러
   const renderProjectCard = (q: Quote) => {
@@ -245,269 +172,6 @@ export function SettlementList({ quotes, onView, onSettle }: SettlementListProps
             )}
           </div>
         )}
-      </div>
-    );
-  };
-
-  // ── 대시보드 차트 영역 ──
-  const renderDashboard = () => {
-    const maxRevenue = Math.max(...monthlyData.map((d) => d.revenue), 1);
-    const maxCatActual = Math.max(...categoryData.map((d) => d.actual), 1);
-    const maxProjectRevenue = Math.max(...projectMarginData.map((d) => d.revenue), 1);
-
-    return (
-      <div className="space-y-3">
-        {/* 상단 KPI 카드 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <div className="bg-white rounded-2xl p-3 md:p-4 col-span-2 md:col-span-1">
-            <span className="text-[11px] font-semibold text-toss-text-tertiary block mb-0.5">총 수금액</span>
-            <span className="text-[18px] md:text-[20px] font-bold text-toss-text tabular-nums tracking-tight">
-              {formatCurrency(totalRevenue)}
-            </span>
-          </div>
-          <div className="bg-white rounded-2xl p-3 md:p-4">
-            <span className="text-[11px] font-semibold text-toss-text-tertiary block mb-0.5">정산대기</span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[18px] md:text-[20px] font-bold text-amber-600 tabular-nums">{pendingProjects.length}건</span>
-              {pendingProjects.length > 0 && (
-                <span className="text-[11px] text-toss-text-tertiary tabular-nums">{formatCurrency(pendingTotal)}</span>
-              )}
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-3 md:p-4">
-            <span className="text-[11px] font-semibold text-toss-text-tertiary block mb-0.5">정산완료</span>
-            <span className="text-[18px] md:text-[20px] font-bold text-toss-green tabular-nums">{settledProjects.length}건</span>
-          </div>
-          <div className="bg-white rounded-2xl p-3 md:p-4">
-            <span className="text-[11px] font-semibold text-toss-text-tertiary block mb-0.5">평균 마진율</span>
-            <span className={`text-[18px] md:text-[20px] font-bold tabular-nums ${totalMargin >= 0 ? "text-toss-green" : "text-toss-red"}`}>
-              {avgMarginPercent}%
-            </span>
-            {totalRevenue > 0 && (
-              <span className={`text-[11px] font-medium tabular-nums block ${totalMargin >= 0 ? "text-toss-green" : "text-toss-red"}`}>
-                {formatCurrency(totalMargin)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* 비용 구성 도넛 + 월별 수금 차트 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* 비용 구성 (도넛 차트 스타일) */}
-          <div className="bg-white rounded-2xl p-4 md:p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <PieChart size={16} className="text-toss-text-tertiary" />
-              <span className="text-[14px] font-bold text-toss-text">비용 구성</span>
-            </div>
-            {totalRevenue === 0 ? (
-              <div className="py-8 text-center text-[13px] text-toss-text-tertiary">정산 데이터가 없습니다</div>
-            ) : (
-              <div className="flex items-center gap-6">
-                {/* CSS 도넛 차트 */}
-                <div className="relative w-32 h-32 shrink-0">
-                  <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                    {(() => {
-                      const matPct = (totalMaterial / totalRevenue) * 100;
-                      const payPct = (totalPayments / totalRevenue) * 100;
-                      const marginPct = Math.max(0, (totalMargin / totalRevenue) * 100);
-                      let offset = 0;
-                      const segments = [
-                        { pct: matPct, color: "#60a5fa" },
-                        { pct: payPct, color: "#fb923c" },
-                        { pct: marginPct, color: totalMargin >= 0 ? "#22c55e" : "#ef4444" },
-                      ];
-                      return segments.map((seg, i) => {
-                        const el = (
-                          <circle
-                            key={i}
-                            cx="18" cy="18" r="15.9155"
-                            fill="none"
-                            stroke={seg.color}
-                            strokeWidth="3.5"
-                            strokeDasharray={`${seg.pct} ${100 - seg.pct}`}
-                            strokeDashoffset={`${-offset}`}
-                            strokeLinecap="round"
-                          />
-                        );
-                        offset += seg.pct;
-                        return el;
-                      });
-                    })()}
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`text-[16px] font-extrabold tabular-nums ${totalMargin >= 0 ? "text-toss-green" : "text-toss-red"}`}>
-                      {avgMarginPercent}%
-                    </span>
-                    <span className="text-[10px] text-toss-text-tertiary">마진율</span>
-                  </div>
-                </div>
-
-                {/* 범례 */}
-                <div className="flex-1 space-y-2.5 text-[12px]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-blue-400" />
-                      <span className="text-toss-text-secondary">자재비</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold text-toss-text tabular-nums">{formatCurrency(totalMaterial)}</span>
-                      <span className="text-toss-text-tertiary ml-1 tabular-nums">{totalRevenue > 0 ? Math.round((totalMaterial / totalRevenue) * 100) : 0}%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-orange-400" />
-                      <span className="text-toss-text-secondary">지급내역</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold text-toss-text tabular-nums">{formatCurrency(totalPayments)}</span>
-                      <span className="text-toss-text-tertiary ml-1 tabular-nums">{totalRevenue > 0 ? Math.round((totalPayments / totalRevenue) * 100) : 0}%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded ${totalMargin >= 0 ? "bg-toss-green" : "bg-toss-red"}`} />
-                      <span className="text-toss-text-secondary">순수익</span>
-                    </div>
-                    <div className="text-right">
-                      <span className={`font-bold tabular-nums ${totalMargin >= 0 ? "text-toss-green" : "text-toss-red"}`}>{formatCurrency(totalMargin)}</span>
-                      <span className="text-toss-text-tertiary ml-1 tabular-nums">{avgMarginPercent}%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 월별 수금/마진 추이 바 차트 */}
-          <div className="bg-white rounded-2xl p-4 md:p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 size={16} className="text-toss-text-tertiary" />
-              <span className="text-[14px] font-bold text-toss-text">월별 추이</span>
-            </div>
-            {monthlyData.length === 0 ? (
-              <div className="py-8 text-center text-[13px] text-toss-text-tertiary">정산 데이터가 없습니다</div>
-            ) : (
-              <div className="space-y-0">
-                {/* 범례 */}
-                <div className="flex items-center gap-4 text-[11px] mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded bg-toss-blue" />
-                    <span className="text-toss-text-tertiary">수금액</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded bg-toss-green" />
-                    <span className="text-toss-text-tertiary">마진</span>
-                  </div>
-                </div>
-                {/* 바 */}
-                <div className="space-y-2">
-                  {monthlyData.map((d) => (
-                    <div key={d.label} className="flex items-center gap-2">
-                      <span className="text-[12px] font-medium text-toss-text-secondary w-8 shrink-0 tabular-nums">{d.label}</span>
-                      <div className="flex-1 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 bg-toss-blue/80 rounded-r-full transition-all" style={{ width: `${(d.revenue / maxRevenue) * 100}%`, minWidth: 4 }} />
-                          <span className="text-[10px] font-bold text-toss-text tabular-nums shrink-0">{fmt(d.revenue)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`h-3 rounded-r-full transition-all ${d.margin >= 0 ? "bg-toss-green/70" : "bg-toss-red/70"}`} style={{ width: `${(Math.abs(d.margin) / maxRevenue) * 100}%`, minWidth: 4 }} />
-                          <span className={`text-[10px] font-bold tabular-nums shrink-0 ${d.margin >= 0 ? "text-toss-green" : "text-toss-red"}`}>
-                            {fmt(d.margin)} ({d.revenue > 0 ? Math.round((d.margin / d.revenue) * 100) : 0}%)
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 프로젝트별 마진 비교 + 공정별 비용 분석 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* 프로젝트별 마진 비교 */}
-          <div className="bg-white rounded-2xl p-4 md:p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 size={16} className="text-toss-text-tertiary" />
-              <span className="text-[14px] font-bold text-toss-text">프로젝트별 마진</span>
-            </div>
-            {projectMarginData.length === 0 ? (
-              <div className="py-8 text-center text-[13px] text-toss-text-tertiary">정산 데이터가 없습니다</div>
-            ) : (
-              <div className="space-y-2">
-                {projectMarginData.map((p) => (
-                  <div key={p.name} className="group">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[12px] font-semibold text-toss-text truncate flex-1 mr-2">{p.name}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[11px] text-toss-text-tertiary tabular-nums">{formatCurrency(p.revenue)}</span>
-                        <span className={`text-[12px] font-bold tabular-nums ${p.margin >= 0 ? "text-toss-green" : "text-toss-red"}`}>
-                          {p.marginPct}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-4 bg-toss-divider rounded-full overflow-hidden flex">
-                      {p.revenue > 0 && (
-                        <>
-                          <div
-                            className="h-full bg-toss-text/20 transition-all"
-                            style={{ width: `${((p.revenue - Math.max(0, p.margin)) / maxProjectRevenue) * 100}%` }}
-                          />
-                          <div
-                            className={`h-full transition-all ${p.margin >= 0 ? "bg-toss-green" : "bg-toss-red"}`}
-                            style={{ width: `${(Math.max(0, p.margin) / maxProjectRevenue) * 100}%` }}
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 공정별 비용 분석 */}
-          <div className="bg-white rounded-2xl p-4 md:p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Package size={16} className="text-toss-text-tertiary" />
-              <span className="text-[14px] font-bold text-toss-text">공정별 비용</span>
-              <span className="text-[11px] text-toss-text-tertiary ml-auto">견적 vs 실비용</span>
-            </div>
-            {categoryData.length === 0 ? (
-              <div className="py-8 text-center text-[13px] text-toss-text-tertiary">정산 데이터가 없습니다</div>
-            ) : (
-              <div className="space-y-2">
-                {categoryData.slice(0, 8).map((c) => {
-                  const maxVal = Math.max(...categoryData.map((d) => Math.max(d.quoted, d.actual)), 1);
-                  return (
-                    <div key={c.category}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[12px] font-semibold text-toss-text">{c.category}</span>
-                        <div className="flex items-center gap-2 text-[11px] tabular-nums">
-                          <span className="text-toss-text-tertiary">{fmt(c.quoted)}</span>
-                          <span className="text-toss-text-secondary font-medium">{fmt(c.actual)}</span>
-                          <span className={`font-bold ${c.diff >= 0 ? "text-toss-green" : "text-toss-red"}`}>
-                            {c.diff >= 0 ? "+" : ""}{fmt(c.diff)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="relative h-3.5 bg-toss-divider rounded-full overflow-hidden">
-                        <div className="absolute inset-y-0 left-0 bg-toss-text/10 rounded-full" style={{ width: `${(c.quoted / maxVal) * 100}%` }} />
-                        <div className={`absolute inset-y-0 left-0 rounded-full ${c.actual <= c.quoted ? "bg-blue-400/70" : "bg-toss-red/60"}`} style={{ width: `${(c.actual / maxVal) * 100}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="flex items-center gap-3 text-[10px] text-toss-text-tertiary pt-1 border-t border-toss-divider mt-2">
-                  <div className="flex items-center gap-1"><div className="w-2.5 h-2 rounded bg-toss-text/10" /> 견적금액</div>
-                  <div className="flex items-center gap-1"><div className="w-2.5 h-2 rounded bg-blue-400/70" /> 실비용</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     );
   };
@@ -708,34 +372,11 @@ export function SettlementList({ quotes, onView, onSettle }: SettlementListProps
               비용정산관리
             </h2>
           </div>
-          {/* Tab 바 */}
-          <div className="flex border-b border-toss-divider -mx-4 md:-mx-6 px-4 md:px-6">
-            <button
-              onClick={() => setTabMode("dashboard")}
-              className={`px-4 py-2.5 text-[14px] font-semibold border-b-2 transition-colors ${
-                tabMode === "dashboard"
-                  ? "border-toss-blue text-toss-blue"
-                  : "border-transparent text-toss-text-tertiary hover:text-toss-text"
-              }`}
-            >
-              정산현황
-            </button>
-            <button
-              onClick={() => setTabMode("projects")}
-              className={`px-4 py-2.5 text-[14px] font-semibold border-b-2 transition-colors ${
-                tabMode === "projects"
-                  ? "border-toss-blue text-toss-blue"
-                  : "border-transparent text-toss-text-tertiary hover:text-toss-text"
-              }`}
-            >
-              프로젝트 목록
-            </button>
-          </div>
         </div>
       </header>
 
       <div className="px-4 md:px-6 py-3 md:py-4 pb-24 md:pb-8">
-        {tabMode === "dashboard" ? renderDashboard() : renderProjects()}
+        {renderProjects()}
       </div>
     </div>
   );

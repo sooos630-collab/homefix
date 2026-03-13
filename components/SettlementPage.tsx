@@ -255,7 +255,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
     <div className="min-h-screen bg-toss-bg">
       {/* Sticky Header */}
       <header className="sticky top-0 z-20 bg-white">
-        <div className="px-4 md:px-6 h-12 md:h-14 flex items-center justify-between">
+        <div className="px-3 md:px-5 h-11 md:h-12 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={onCancel}
@@ -264,8 +264,8 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
               <ChevronLeft size={22} className="text-toss-text" />
             </button>
             <div>
-              <h2 className="text-[17px] md:text-[19px] font-bold text-toss-text tracking-tight">최종 정산</h2>
-              <p className="text-[12px] text-toss-text-tertiary -mt-0.5">{quote.client.name} · {quote.client.address}</p>
+              <h2 className="text-[16px] md:text-[17px] font-bold text-toss-text tracking-tight">최종 정산</h2>
+              <p className="text-[11px] text-toss-text-tertiary -mt-0.5">{quote.client.name} · {quote.client.address}</p>
             </div>
           </div>
           <button
@@ -283,7 +283,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
         </div>
       </header>
 
-      <div className="px-4 md:px-6 py-3 md:py-4 space-y-3 pb-28">
+      <div className="px-3 md:px-5 py-2 md:py-3 space-y-2 pb-24">
         {/* Item Groups */}
         {groups.map((group, groupIdx) => {
           const isExpanded = expandedItems.has(group.itemId);
@@ -297,36 +297,36 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
           const groupValid = group.rows.every((r) => Number(r.entry.materialCost) > 0);
 
           return (
-            <section key={group.itemId} className="bg-white rounded-2xl overflow-hidden">
+            <section key={group.itemId} className="bg-white rounded-xl overflow-hidden">
               {/* Card Header */}
               <button
                 onClick={() => toggleExpand(group.itemId)}
-                className="w-full px-4 md:px-5 py-3 md:py-4 flex items-center gap-3 hover:bg-toss-bg/30 transition-colors"
+                className="w-full px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-2 hover:bg-toss-bg/30 transition-colors"
               >
-                <span className="text-[12px] font-bold text-toss-text-tertiary bg-toss-bg w-6 h-6 rounded-lg flex items-center justify-center shrink-0">
+                <span className="text-[11px] font-bold text-toss-text-tertiary bg-toss-bg w-5 h-5 rounded-md flex items-center justify-center shrink-0">
                   {groupIdx + 1}
                 </span>
-                <span className="text-[11px] font-bold text-toss-blue bg-toss-blue/10 px-2 py-0.5 rounded-md shrink-0">
+                <span className="text-[10px] font-bold text-toss-blue bg-toss-blue/10 px-1.5 py-0.5 rounded shrink-0">
                   {group.category}
                 </span>
-                <span className="text-[14px] font-semibold text-toss-text truncate text-left flex-1">
+                <span className="text-[13px] font-semibold text-toss-text truncate text-left flex-1">
                   {group.description}
                 </span>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {groupValid ? (
-                    <span className="text-[10px] font-bold bg-toss-green-light text-toss-green px-1.5 py-0.5 rounded-full hidden md:inline">완료</span>
+                    <span className="text-[9px] font-bold bg-toss-green-light text-toss-green px-1.5 py-0.5 rounded-full hidden md:inline">완료</span>
                   ) : (
-                    <span className="text-[10px] font-bold bg-toss-red-light text-toss-red px-1.5 py-0.5 rounded-full hidden md:inline">미입력</span>
+                    <span className="text-[9px] font-bold bg-toss-red-light text-toss-red px-1.5 py-0.5 rounded-full hidden md:inline">미입력</span>
                   )}
-                  <span className="text-[13px] font-bold text-toss-text tabular-nums">{formatCurrency(group.quotedTotal)}</span>
-                  {isExpanded ? <ChevronUp size={16} className="text-toss-text-tertiary" /> : <ChevronDown size={16} className="text-toss-text-tertiary" />}
+                  <span className="text-[12px] font-bold text-toss-text tabular-nums">{formatCurrency(group.quotedTotal)}</span>
+                  {isExpanded ? <ChevronUp size={14} className="text-toss-text-tertiary" /> : <ChevronDown size={14} className="text-toss-text-tertiary" />}
                 </div>
               </button>
 
               {isExpanded && (
-                <div className="px-4 md:px-5 pb-4 md:pb-5">
+                <div className="px-3 md:px-4 pb-3 md:pb-3">
                   {/* Desktop: 테이블 헤더 */}
-                  <div className="hidden md:flex items-center gap-2 text-[11px] text-toss-text-tertiary font-medium px-1 pb-2 border-b border-toss-border/30">
+                  <div className="hidden md:flex items-center gap-2 text-[10px] text-toss-text-tertiary font-medium px-1 pb-1.5 border-b border-toss-border/30">
                     <span className="w-[18%] min-w-0">세부항목</span>
                     <span className="w-[10%] text-right">견적금액</span>
                     <span className="flex-1">거래처 지급</span>
@@ -343,7 +343,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
                     return (
                       <div key={row.entry.id}>
                         {/* Desktop Row */}
-                        <div className="hidden md:flex items-start gap-2 py-2 border-b border-toss-border/20">
+                        <div className="hidden md:flex items-start gap-2 py-1.5 border-b border-toss-border/20">
                           {/* 세부항목 */}
                           <span className="w-[18%] min-w-0 text-[13px] font-medium text-toss-text truncate pt-1.5">
                             {row.entry.description}
@@ -372,7 +372,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
                                   value={payment.amount || ""}
                                   onChange={(e) => updatePaymentAmount(group.itemId, row.entry.id, payment.id, Number(e.target.value))}
                                   placeholder="금액"
-                                  className="w-24 px-2 py-1 bg-toss-input rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:bg-toss-divider transition-colors"
+                                  className="w-24 px-2 py-1 bg-white border border-toss-border rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:border-toss-blue transition-colors"
                                 />
                                 <button
                                   onClick={() => removePayment(group.itemId, row.entry.id, payment.id)}
@@ -397,7 +397,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
                               value={row.entry.materialCost || ""}
                               onChange={(e) => handleMaterialChange(group.itemId, row.entry.id, Number(e.target.value))}
                               placeholder="자재비"
-                              className="w-full px-2 py-1 bg-toss-input rounded-lg text-[12px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:bg-toss-divider transition-colors"
+                              className="w-full px-2 py-1 bg-white border border-toss-border rounded-lg text-[12px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:border-toss-blue transition-colors"
                             />
                           </div>
                           {/* 순수익 */}
@@ -413,7 +413,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
                         </div>
 
                         {/* Mobile Row (compact) */}
-                        <div className="md:hidden bg-toss-bg/40 rounded-xl p-3 mb-1.5 space-y-1.5">
+                        <div className="md:hidden bg-toss-bg/40 rounded-lg p-2.5 mb-1 space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-[13px] font-semibold text-toss-text">{row.entry.description}</span>
                             <span className="text-[11px] text-toss-text-tertiary tabular-nums">견적 {fmt(row.entry.quotedAmount)}</span>
@@ -437,7 +437,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
                                 value={payment.amount || ""}
                                 onChange={(e) => updatePaymentAmount(group.itemId, row.entry.id, payment.id, Number(e.target.value))}
                                 placeholder="금액"
-                                className="w-24 px-2 py-1.5 bg-toss-input rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none"
+                                className="w-24 px-2 py-1.5 bg-white border border-toss-border rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:border-toss-blue transition-colors"
                               />
                               <button onClick={() => removePayment(group.itemId, row.entry.id, payment.id)} className="p-0.5 text-toss-text-tertiary hover:text-toss-red shrink-0">
                                 <Trash2 size={11} />
@@ -458,7 +458,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
                               value={row.entry.materialCost || ""}
                               onChange={(e) => handleMaterialChange(group.itemId, row.entry.id, Number(e.target.value))}
                               placeholder="실자재구매"
-                              className="flex-1 px-2 py-1.5 bg-toss-input rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none"
+                              className="flex-1 px-2 py-1.5 bg-white border border-toss-border rounded-lg text-[11px] text-right tabular-nums placeholder:text-toss-text-tertiary focus:outline-none focus:border-toss-blue transition-colors"
                             />
                             <span
                               className={`text-[12px] font-bold tabular-nums shrink-0 w-20 text-right ${
@@ -476,16 +476,16 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
                   })}
 
                   {/* Group Subtotal */}
-                  <div className="bg-toss-bg rounded-xl px-3 py-2.5 flex items-center justify-between text-[12px] mt-2">
+                  <div className="bg-toss-bg rounded-lg px-2.5 py-2 flex items-center justify-between text-[11px] mt-1.5">
                     <span className="font-semibold text-toss-text-secondary">소계</span>
                     <div className="flex items-center gap-3 tabular-nums">
                       {groupVendorPay > 0 && (
                         <span className="text-toss-text-tertiary">
-                          거래처 <span className="font-bold text-toss-text">{fmt(groupVendorPay)}</span>
+                          거래처 지급액 합계 <span className="font-bold text-toss-text">{fmt(groupVendorPay)}</span>
                         </span>
                       )}
                       <span className="text-toss-text-tertiary">
-                        자재 <span className="font-bold text-toss-text">{fmt(groupMaterial)}</span>
+                        실자재구매 합계 <span className="font-bold text-toss-text">{fmt(groupMaterial)}</span>
                       </span>
                       <span className={`font-bold ${groupProfit >= 0 ? "text-toss-green" : "text-toss-red"}`}>
                         {groupProfit >= 0 ? "+" : ""}{fmt(groupProfit)}
@@ -499,9 +499,9 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
         })}
 
         {/* Summary */}
-        <section className="bg-toss-text rounded-2xl p-4 md:p-5 text-white">
-          <h3 className="text-[14px] font-bold text-white/70 mb-3">정산 요약</h3>
-          <div className="space-y-2 text-[13px]">
+        <section className="bg-toss-text rounded-xl p-3 md:p-4 text-white">
+          <h3 className="text-[13px] font-bold text-white/70 mb-2">정산 요약</h3>
+          <div className="space-y-1.5 text-[12px]">
             <div className="flex justify-between">
               <span className="text-white/60">총 견적금액 (수금액)</span>
               <span className="font-semibold tabular-nums">{formatCurrency(totalQuotedAmount)}</span>
@@ -515,12 +515,12 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
               <span className="text-white/60">실자재구매 합계</span>
               <span className="font-medium text-orange-300 tabular-nums">- {formatCurrency(totalMaterialCost)}</span>
             </div>
-            <div className="h-px bg-white/20 mt-2" />
-            <div className="flex justify-between items-baseline pt-2">
-              <span className="text-[15px] font-bold">최종 순수익</span>
+            <div className="h-px bg-white/20 mt-1" />
+            <div className="flex justify-between items-baseline pt-1.5">
+              <span className="text-[14px] font-bold">최종 순수익</span>
               <div className="text-right">
                 <span
-                  className={`text-[24px] md:text-[28px] font-extrabold tracking-tight tabular-nums ${
+                  className={`text-[20px] md:text-[24px] font-extrabold tracking-tight tabular-nums ${
                     finalMargin >= 0 ? "text-toss-green" : "text-toss-red"
                   }`}
                 >
@@ -540,8 +540,8 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
 
         {/* Validation */}
         {!isAllValid && (
-          <div className="bg-toss-red-light p-3 rounded-2xl text-[12px] text-toss-red">
-            <p className="font-bold mb-1">입력이 필요한 항목이 있습니다</p>
+          <div className="bg-toss-red-light p-2.5 rounded-xl text-[11px] text-toss-red">
+            <p className="font-bold mb-0.5">입력이 필요한 항목이 있습니다</p>
             <ul className="space-y-0.5">
               {groups
                 .flatMap((g) =>
@@ -561,7 +561,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
         className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-2xl shadow-[0_-1px_12px_rgba(0,0,0,0.06)] md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <div className="px-4 py-3 flex items-center justify-between">
+        <div className="px-3 py-2.5 flex items-center justify-between">
           <div className="min-w-0 flex-1 mr-3">
             <span className="text-[11px] text-toss-text-tertiary block">최종 순수익</span>
             <span
@@ -575,7 +575,7 @@ export function SettlementPage({ quote, onConfirm, onCancel }: SettlementPagePro
           <button
             onClick={handleConfirm}
             disabled={!isAllValid}
-            className={`flex items-center gap-1.5 px-6 py-3 text-[14px] font-semibold rounded-2xl transition-all active:scale-[0.97] shrink-0 ${
+            className={`flex items-center gap-1.5 px-5 py-2.5 text-[13px] font-semibold rounded-xl transition-all active:scale-[0.97] shrink-0 ${
               isAllValid
                 ? "bg-toss-green text-white hover:bg-toss-green/80"
                 : "bg-toss-divider text-toss-text-tertiary cursor-not-allowed"
